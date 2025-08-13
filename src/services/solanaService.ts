@@ -150,6 +150,127 @@ export class SolanaService {
     }
   }
 
+  async getTokenTransfersStream(
+    tokenMint: string,
+    walletAddress: string | undefined,
+    lookbackSeconds: number,
+    onBatch: (batch: TokenTransfer[]) => void
+  ): Promise<void> {
+    const cutoffTimeMs = Date.now() - lookbackSeconds * 1000;
+    const seen = new Set<string>();
+    const buffer: TokenTransfer[] = [];
+
+    const emit = () => {
+      if (buffer.length === 0) return;
+      const batch = buffer.splice(0, buffer.length);
+      onBatch(batch);
+    };
+
+    const push = (t: TokenTransfer) => {
+      const key = `${t.signature}-${t.fromAddress}-${t.toAddress}-${t.amount}`;
+      if (seen.has(key)) return;
+      if (t.timestamp < cutoffTimeMs) return;
+      seen.add(key);
+      buffer.push(t);
+      if (buffer.length >= 10) emit();
+    };
+
+    try {
+      // With wallet: stream signed + ATA txs
+      if (walletAddress) {
+        // Signed
+        const walletPubkey = new PublicKey(walletAddress);
+        const sigs = await this.connection.getSignaturesForAddress(walletPubkey, { limit: DEFAULT_CONFIG.maxSignaturesPerQuery });
+        for (const s of sigs) {
+          if (s.blockTime && s.blockTime * 1000 < cutoffTimeMs) break;
+          await this.delay(DEFAULT_CONFIG.delayMsBetweenRequests);
+          const tx = await this.connection.getParsedTransaction(s.signature, { maxSupportedTransactionVersion: 0 });
+          if (!tx) continue;
+          const one = this.parseTransactionForTokenTransfer(tx, walletAddress, tokenMint);
+          if (one) push(one);
+        }
+        // ATAs
+        const atas = await this.getTokenAccounts(walletAddress, tokenMint);
+        for (const ata of atas) {
+          const sigsAta = await this.connection.getSignaturesForAddress(new PublicKey(ata.address), { limit: DEFAULT_CONFIG.maxSignaturesPerQuery });
+          for (const s of sigsAta) {
+            if (s.blockTime && s.blockTime * 1000 < cutoffTimeMs) break;
+            await this.delay(DEFAULT_CONFIG.delayMsBetweenRequests);
+            const tx = await this.connection.getParsedTransaction(s.signature, { maxSupportedTransactionVersion: 0 });
+            if (!tx) continue;
+            const one = this.parseTransactionForTokenTransfer(tx, walletAddress, tokenMint);
+            if (one) push(one);
+          }
+        }
+        emit();
+        return;
+      }
+
+      // Token-wide: Helius REST mint search first
+      if (this.rpcUrl.includes('helius')) {
+        const url = this.getHeliusSearchUrl();
+        if (url) {
+          let before: string | undefined;
+          for (let pages = 0; pages < 10; pages++) {
+            const body: any = {
+              query: { mints: [tokenMint], types: ['TOKEN_TRANSFER'] },
+              options: { limit: 200, sortOrder: 'desc', commitment: 'confirmed' },
+            };
+            if (before) body.before = before;
+            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            if (!res.ok) break;
+            const arr = await res.json();
+            const txs: any[] = Array.isArray(arr) ? arr : [];
+            if (txs.length === 0) break;
+            for (const tx of txs) {
+              const tsMs = tx.blockTime ? tx.blockTime * 1000 : 0;
+              if (tsMs && tsMs < cutoffTimeMs) { pages = 10; break; }
+              if (Array.isArray(tx.tokenTransfers)) {
+                for (const t of tx.tokenTransfers) {
+                  if (t.mint !== tokenMint) continue;
+                  push({
+                    signature: tx.signature,
+                    timestamp: tsMs || Date.now(),
+                    direction: 'sent',
+                    amount: Number(t.tokenAmount || 0),
+                    fromAddress: t.fromUserAccount || t.fromTokenAccount || 'Unknown',
+                    toAddress: t.toUserAccount || t.toTokenAccount || 'Unknown',
+                    slot: tx.slot || 0,
+                  });
+                }
+              }
+            }
+            before = txs[txs.length - 1]?.signature;
+          }
+          emit();
+          if (seen.size > 0) return;
+        }
+      }
+
+      // Block scan fallback
+      const startSlot = await this.connection.getSlot();
+      const maxBlocks = 500; // deeper for seconds streaming
+      for (let i = 0; i < maxBlocks; i++) {
+        const slot = startSlot - i;
+        await this.delay(DEFAULT_CONFIG.delayMsBetweenRequests);
+        const block = await this.connection.getParsedBlock(slot, { maxSupportedTransactionVersion: 0 });
+        if (!block) continue;
+        const blkMs = block.blockTime ? block.blockTime * 1000 : 0;
+        if (blkMs && blkMs < cutoffTimeMs) break;
+        for (const tx of block.transactions || []) {
+          const compat = Object.assign({}, tx, { slot, blockTime: block.blockTime }) as unknown as ParsedTransactionWithMeta;
+          const many = this.parseTransactionForTokenTransfers(compat, tokenMint);
+          for (const t of many) push(t);
+        }
+        if (buffer.length) emit();
+      }
+      emit();
+    } catch (e) {
+      emit();
+      throw e;
+    }
+  }
+
   private async getWalletTokenTransfers(
     walletAddress: string, 
     tokenMint: string, 

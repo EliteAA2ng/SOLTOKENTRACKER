@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
@@ -26,16 +26,16 @@ interface AppState {
 
 function TokenTracker() {
   const [appState, setAppState] = useState<AppState | null>(null);
+  const [streamTransfers, setStreamTransfers] = useState<TokenTransfer[]>([]);
+  const [streamStart, setStreamStart] = useState<number | null>(null);
+  const [isTracking, setIsTracking] = useState(false);
+  const isStreaming = useRef(false);
 
   const { data: tokenMetadata, isLoading: isLoadingMetadata } = useQuery({
     queryKey: ['tokenMetadata', appState?.tokenMint],
     queryFn: async (): Promise<TokenMetadata> => {
       if (!appState) throw new Error('No app state');
-      
-      const rpcUrl = appState.heliusKey 
-        ? getHeliusRpcUrl(appState.heliusKey)
-        : PUBLIC_RPC_URL;
-      
+      const rpcUrl = appState.heliusKey ? getHeliusRpcUrl(appState.heliusKey) : PUBLIC_RPC_URL;
       const service = new SolanaService(rpcUrl);
       return await service.getTokenMetadata(appState.tokenMint);
     },
@@ -46,36 +46,61 @@ function TokenTracker() {
     queryKey: ['tokenTransfers', appState?.tokenMint, appState?.walletAddress, appState?.heliusKey, appState?.seconds],
     queryFn: async (): Promise<TokenTransfer[]> => {
       if (!appState) return [];
-      
-      const rpcUrl = appState.heliusKey 
-        ? getHeliusRpcUrl(appState.heliusKey)
-        : PUBLIC_RPC_URL;
-      
+      const rpcUrl = appState.heliusKey ? getHeliusRpcUrl(appState.heliusKey) : PUBLIC_RPC_URL;
       const service = new SolanaService(rpcUrl);
-      // Convert seconds to minutes for any fallback logic if needed inside service
+      // Non-stream final snapshot (still returned)
       return await service.getTokenTransfers(appState.tokenMint, appState.walletAddress, appState.seconds);
     },
     enabled: !!appState && !!tokenMetadata,
   });
 
+  useEffect(() => {
+    // Start streaming when appState becomes available
+    const run = async () => {
+      if (!appState) return;
+      if (isStreaming.current) return;
+      isStreaming.current = true;
+      setIsTracking(true);
+      setStreamTransfers([]);
+      setStreamStart(Date.now());
+
+      const rpcUrl = appState.heliusKey ? getHeliusRpcUrl(appState.heliusKey) : PUBLIC_RPC_URL;
+      const service = new SolanaService(rpcUrl);
+      try {
+        await service.getTokenTransfersStream(
+          appState.tokenMint,
+          appState.walletAddress,
+          appState.seconds,
+          (batch) => setStreamTransfers((prev) => [...batch, ...prev])
+        );
+      } finally {
+        isStreaming.current = false;
+        setIsTracking(false);
+      }
+    };
+    if (appState && tokenMetadata) run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appState?.tokenMint, appState?.walletAddress, appState?.heliusKey, appState?.seconds, !!tokenMetadata]);
+
   const isLoading = isLoadingMetadata || isLoadingTransfers;
 
   const handleAnalyze = (tokenMint: string, walletAddress: string, heliusKey: string, seconds: number) => {
-    setAppState({ 
-      tokenMint, 
-      walletAddress: walletAddress || undefined, 
-      heliusKey, 
-      seconds 
-    });
+    setAppState({ tokenMint, walletAddress: walletAddress || undefined, heliusKey, seconds });
   };
 
   const handleReset = () => {
     setAppState(null);
+    setStreamTransfers([]);
+    setStreamStart(null);
+    setIsTracking(false);
+    isStreaming.current = false;
   };
 
   if (!appState) {
     return <WalletInput onSubmit={handleAnalyze} loading={isLoading} />;
   }
+
+  const combinedTransfers = (streamTransfers.length ? streamTransfers : []).concat(transfers || []);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -84,10 +109,7 @@ function TokenTracker() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <button
-                onClick={handleReset}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-              >
+              <button onClick={handleReset} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
@@ -97,20 +119,17 @@ function TokenTracker() {
                   {tokenMetadata?.name || 'Token'} Transfer Analytics
                 </h1>
                 <p className="text-sm text-slate-600">
-                  {appState.walletAddress 
-                    ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}`
-                    : `All ${tokenMetadata?.symbol || 'Token'} transfers`
-                  }
+                  {appState.walletAddress ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : `All ${tokenMetadata?.symbol || 'Token'} transfers`}
                 </p>
               </div>
-              </div>
+            </div>
 
             <div className="flex items-center gap-3 text-sm text-slate-600">
               <span>{tokenMetadata?.symbol || 'TOKEN'}</span>
               <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
               <span>Lookback: {appState.seconds}s</span>
               <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-              <span>Helius RPC</span>
+              {streamStart && <span>Started: {new Date(streamStart).toLocaleTimeString()}</span>}
             </div>
           </div>
         </div>
@@ -118,65 +137,40 @@ function TokenTracker() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isLoading && (
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-xl border border-slate-200 mb-4">
-                <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
-              </div>
-              <h3 className="text-lg font-medium text-slate-900 mb-2">
-                Analyzing transfers
-              </h3>
-              <p className="text-slate-600 text-sm max-w-sm">
-                {isLoadingMetadata 
-                  ? 'Fetching token information...'
-                  : `Scanning blockchain for ${tokenMetadata?.symbol || 'token'} transactions. This may take a few moments.`
-                }
-              </p>
+        {isTracking && (
+          <div className="flex items-center justify-center mb-4">
+            <div className="inline-flex items-center gap-2 text-slate-600 text-sm">
+              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+              <span>Tracking...</span>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-2xl mx-auto mb-6">
             <div className="bg-white border border-red-200 rounded-xl p-6">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
                   <AlertCircle className="w-5 h-5 text-red-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                    Analysis Failed
-                  </h3>
-                  <p className="text-slate-700 mb-4">
-                    {error instanceof Error ? error.message : 'An unexpected error occurred while fetching transfer data.'}
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleReset}
-                      className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg transition-colors"
-                    >
-                      Try Different Token
-                    </button>
-                    <button
-                      onClick={() => window.location.reload()}
-                      className="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors"
-                    >
-                      Retry Analysis
-                    </button>
-                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Analysis Warning</h3>
+                  <p className="text-slate-700 mb-2">{error instanceof Error ? error.message : 'An issue occurred while fetching transfer data.'}</p>
+                  {streamTransfers.length > 0 && (
+                    <p className="text-slate-600 text-sm">Streaming results are still coming in below.</p>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {transfers && tokenMetadata && !isLoading && (
-          <TransferList 
-            transfers={transfers} 
-            tokenMetadata={tokenMetadata}
-            walletAddress={appState.walletAddress}
-          />
+        {(combinedTransfers.length > 0) && (
+          <TransferList transfers={combinedTransfers} tokenMetadata={tokenMetadata!} walletAddress={appState.walletAddress} />
+        )}
+
+        {isLoading && combinedTransfers.length === 0 && (
+          <div className="text-center text-slate-600">Scanning blockchain for transfers...</div>
         )}
       </div>
     </div>
