@@ -1,18 +1,53 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, AlertTriangle, Info } from 'lucide-react';
 import { COMMON_TOKENS } from '../config';
+import { WalletConnection } from './WalletConnection';
 
 interface WalletInputProps {
-  onSubmit: (tokenMint: string, walletAddress: string, heliusKey: string, seconds: number) => void;
+  onSubmit: (data: {
+    tokenMint: string;
+    walletAddress?: string;
+    heliusKey: string;
+    seconds: number;
+  }) => void;
   loading: boolean;
 }
 
+// Form persistence helper
+const FORM_STORAGE_KEY = 'solana-tracker-form';
+
+const saveFormData = (data: any) => {
+  try {
+    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.warn('Failed to save form data:', error);
+  }
+};
+
+const loadFormData = () => {
+  try {
+    const saved = localStorage.getItem(FORM_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : {};
+  } catch (error) {
+    console.warn('Failed to load form data:', error);
+    return {};
+  }
+};
+
 export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
-  const [tokenMint, setTokenMint] = useState('');
-  const [walletAddress, setWalletAddress] = useState('');
-  const [heliusKey, setHeliusKey] = useState('32b3331b-4199-4640-b6b3-2902f294075d');
-  const [seconds, setSeconds] = useState(60);
+  const savedData = loadFormData();
+  
+  const [tokenMint, setTokenMint] = useState(savedData.tokenMint || '');
+  const [walletAddress, setWalletAddress] = useState(savedData.walletAddress || '');
+  const [heliusKey, setHeliusKey] = useState(savedData.heliusKey || '');
+  const [seconds, setSeconds] = useState(savedData.seconds || 60);
   const [error, setError] = useState('');
+
+  // Save form data whenever fields change
+  useEffect(() => {
+    const formData = { tokenMint, walletAddress, heliusKey, seconds };
+    saveFormData(formData);
+  }, [tokenMint, walletAddress, heliusKey, seconds]);
 
   const validateAddress = (addr: string): boolean => {
     if (!addr.trim()) return false;
@@ -46,7 +81,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
       return;
     }
 
-    onSubmit(tokenMint.trim(), walletAddress.trim(), heliusKey.trim(), seconds);
+    onSubmit({ tokenMint: tokenMint.trim(), walletAddress: walletAddress.trim(), heliusKey: heliusKey.trim(), seconds });
   };
 
   return (
@@ -109,23 +144,29 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
           {/* Wallet Address */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 block">
-              Wallet Address <span className="text-slate-400">(optional)</span>
+              Wallet Address (Optional)
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={walletAddress}
-                onChange={(e) => setWalletAddress(e.target.value)}
-                placeholder="Filter by specific wallet address"
-                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
-                disabled={loading}
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={walletAddress}
+                  onChange={(e) => setWalletAddress(e.target.value)}
+                  placeholder="Filter by specific wallet address"
+                  className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
+                  disabled={loading}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+                </div>
               </div>
+              <WalletConnection 
+                onWalletSelect={setWalletAddress}
+                currentAddress={walletAddress}
+              />
             </div>
             <p className="text-xs text-slate-500">
-              Leave empty to see all recent transfers for the token
+              Connect your wallet or manually enter an address to filter transfers
             </p>
           </div>
 

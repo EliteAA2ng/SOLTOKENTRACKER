@@ -87,8 +87,18 @@ function TokenTracker() {
 
   const isLoading = isLoadingMetadata || isLoadingTransfers;
 
-  const handleAnalyze = (tokenMint: string, walletAddress: string, heliusKey: string, seconds: number) => {
-    setAppState({ tokenMint, walletAddress: walletAddress || undefined, heliusKey, seconds });
+  const handleAnalyze = (data: {
+    tokenMint: string;
+    walletAddress?: string;
+    heliusKey: string;
+    seconds: number;
+  }) => {
+    setAppState({ 
+      tokenMint: data.tokenMint, 
+      walletAddress: data.walletAddress || undefined, 
+      heliusKey: data.heliusKey, 
+      seconds: data.seconds 
+    });
   };
 
   const handleReset = () => {
