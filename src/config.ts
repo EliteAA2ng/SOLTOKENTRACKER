@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG = {
 	maxSignaturesPerQuery: 1000,
 	maxTransactionsToProcess: 150,
 	// Default Helius API key for convenience (users can override)
-	defaultHeliusKey: 'f9b4a9c7-5e8a-4b2d-9c3e-1f6a8b5c4d7e',
+	defaultHeliusKey: '32b3331b-4199-4640-b6b3-2902f294075d',
 };
 
 export const getHeliusRpcUrl = (apiKey: string): string => {
