@@ -60,9 +60,18 @@ export class SolanaService {
       await Promise.allSettled([
         this.fetchJupiterMetadata(mintAddress, metadata),
         this.fetchCoinGeckoMetadata(mintAddress, metadata),
-        this.fetchBirdeyeMetadata(mintAddress, metadata),
         this.fetchDexScreenerMetadata(mintAddress, metadata)
+        // Note: Birdeye requires API key - will be called separately if key is available
       ]);
+
+      // Only try Birdeye if API key is available
+      const birdeyeApiKey = localStorage.getItem('birdeyeApiKey') || 
+                           (import.meta as any).env?.VITE_BIRDEYE_API_KEY;
+      if (birdeyeApiKey) {
+        await this.fetchBirdeyeMetadata(mintAddress, metadata).catch(() => {
+          // Ignore Birdeye errors - other APIs will provide data
+        });
+      }
 
       // Fallback symbol if still unknown
       if (metadata.symbol === 'UNKNOWN') {
@@ -142,12 +151,23 @@ export class SolanaService {
 
   private async fetchBirdeyeMetadata(mintAddress: string, metadata: TokenMetadata): Promise<void> {
     try {
-      // Try Birdeye API without API key first (some endpoints work without auth)
+      // Check if user has a Birdeye API key in localStorage or environment
+      const birdeyeApiKey = localStorage.getItem('birdeyeApiKey') || 
+                           (import.meta as any).env?.VITE_BIRDEYE_API_KEY || 
+                           null;
+
+      if (!birdeyeApiKey) {
+        console.warn('Birdeye API key not found - skipping Birdeye data. Get a free key at https://bds.birdeye.so');
+        return;
+      }
+
+      // Try Birdeye API with proper authentication
       const priceResponse = await fetch(
         `https://public-api.birdeye.so/defi/price?address=${mintAddress}`,
         {
           headers: {
             'Accept': 'application/json',
+            'X-API-KEY': birdeyeApiKey,
           }
         }
       );
@@ -158,7 +178,9 @@ export class SolanaService {
           metadata.price = data.data.value || metadata.price;
         }
       } else if (priceResponse.status === 401) {
-        console.warn('Birdeye API requires authentication - skipping price data');
+        console.warn('Birdeye API key is invalid - get a free key at https://bds.birdeye.so');
+      } else if (priceResponse.status === 429) {
+        console.warn('Birdeye API rate limited - consider upgrading your plan');
       }
 
       // Try token overview endpoint
@@ -167,6 +189,7 @@ export class SolanaService {
         {
           headers: {
             'Accept': 'application/json',
+            'X-API-KEY': birdeyeApiKey,
           }
         }
       );
@@ -183,7 +206,9 @@ export class SolanaService {
           metadata.priceChange24h = info.priceChange24hPercent || metadata.priceChange24h;
         }
       } else if (tokenInfoResponse.status === 401) {
-        console.warn('Birdeye API requires authentication - skipping token overview data');
+        console.warn('Birdeye API key is invalid - get a free key at https://bds.birdeye.so');
+      } else if (tokenInfoResponse.status === 429) {
+        console.warn('Birdeye API rate limited - consider upgrading your plan');
       }
     } catch (error) {
       console.warn('Failed to fetch token metadata from Birdeye:', error);

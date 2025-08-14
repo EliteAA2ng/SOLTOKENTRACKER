@@ -152,6 +152,35 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
             </p>
           </div>
 
+          {/* Birdeye API Key */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 block">
+              Birdeye API Key (Optional)
+              <span className="text-xs text-slate-500 ml-1">
+                - Get free key at <a href="https://bds.birdeye.so" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:text-violet-700">bds.birdeye.so</a>
+              </span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={localStorage.getItem('birdeyeApiKey') || ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    localStorage.setItem('birdeyeApiKey', e.target.value);
+                  } else {
+                    localStorage.removeItem('birdeyeApiKey');
+                  }
+                }}
+                placeholder="Your Birdeye API key for price data"
+                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
+                disabled={loading}
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+              </div>
+            </div>
+          </div>
+
           {/* Lookback Period (seconds) */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 block">
