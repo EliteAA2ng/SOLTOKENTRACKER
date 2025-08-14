@@ -46,6 +46,60 @@ const detectWallets = () => {
     });
   }
 
+  // Check for Coinbase Wallet (has Solana support)
+  if (typeof window !== 'undefined' && (window as any).coinbaseSolana) {
+    wallets.push({
+      name: 'Coinbase Wallet',
+      icon: '🔵',
+      adapter: (window as any).coinbaseSolana,
+    });
+  }
+
+  // Check for Trust Wallet (has Solana support)
+  if (typeof window !== 'undefined' && (window as any).trustwallet?.solana) {
+    wallets.push({
+      name: 'Trust Wallet',
+      icon: '🛡️',
+      adapter: (window as any).trustwallet.solana,
+    });
+  }
+
+  // Check for Slope Wallet
+  if (typeof window !== 'undefined' && (window as any).Slope) {
+    wallets.push({
+      name: 'Slope',
+      icon: '📈',
+      adapter: (window as any).Slope,
+    });
+  }
+
+  // Check for Torus (Web3Auth)
+  if (typeof window !== 'undefined' && (window as any).torus?.solana) {
+    wallets.push({
+      name: 'Torus',
+      icon: '🔮',
+      adapter: (window as any).torus.solana,
+    });
+  }
+
+  // Check for Clover Wallet
+  if (typeof window !== 'undefined' && (window as any).clover_solana) {
+    wallets.push({
+      name: 'Clover',
+      icon: '🍀',
+      adapter: (window as any).clover_solana,
+    });
+  }
+
+  // Check for Exodus (has Solana support)
+  if (typeof window !== 'undefined' && (window as any).exodus?.solana) {
+    wallets.push({
+      name: 'Exodus',
+      icon: '🚀',
+      adapter: (window as any).exodus.solana,
+    });
+  }
+
   return wallets;
 };
 
@@ -163,21 +217,51 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
               {wallets.length === 0 ? (
                 <div className="text-center py-8">
                   <Wallet className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No wallets found</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Solana wallets found</h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Please install a Solana wallet extension to continue.
+                    Install a Solana-compatible wallet to connect. MetaMask doesn't support Solana natively.
                   </p>
-                  <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <a
                       href="https://phantom.app/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm transition-colors"
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs transition-colors"
                     >
-                      Install Phantom
-                      <ExternalLink className="w-4 h-4" />
+                      👻 Phantom
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <a
+                      href="https://solflare.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs transition-colors"
+                    >
+                      🔥 Solflare
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <a
+                      href="https://backpack.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs transition-colors"
+                    >
+                      🎒 Backpack
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <a
+                      href="https://glow.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs transition-colors"
+                    >
+                      ✨ Glow
+                      <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
+                  <p className="text-xs text-gray-500 mt-4">
+                    Note: MetaMask is for Ethereum. These wallets support Solana.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
