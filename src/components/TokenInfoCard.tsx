@@ -83,6 +83,15 @@ export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
 
       {/* Price and market data */}
       <div className="p-6">
+        {/* Market data availability notice */}
+        {(!tokenMetadata.price && !tokenMetadata.marketCap && !tokenMetadata.volume24h) && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800">
+              ⚠️ Market data temporarily unavailable. This may be due to network restrictions or API rate limits.
+            </p>
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {/* Current Price */}
           <div className="bg-slate-50 rounded-lg p-4">

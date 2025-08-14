@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
-import { ApiStatusIndicator } from './components/ApiStatusIndicator';
 import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
@@ -225,7 +224,6 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TokenTracker />
-      <ApiStatusIndicator />
     </QueryClientProvider>
   );
 }

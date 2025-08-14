@@ -56,38 +56,18 @@ export class SolanaService {
         supply,
       };
 
-      console.log('🔍 Fetching token metadata from multiple sources...');
-
-      // Try to fetch comprehensive metadata from multiple sources with better error handling
-      const results = await Promise.allSettled([
+      // Try to fetch comprehensive metadata from multiple sources
+      await Promise.allSettled([
         this.fetchJupiterMetadata(mintAddress, metadata),
         this.fetchCoinGeckoMetadata(mintAddress, metadata),
         this.fetchBirdeyeMetadata(mintAddress, metadata),
         this.fetchDexScreenerMetadata(mintAddress, metadata)
       ]);
 
-      // Log results for debugging
-      results.forEach((result, index) => {
-        const sources = ['Jupiter', 'CoinGecko', 'Birdeye', 'DexScreener'];
-        if (result.status === 'fulfilled') {
-          console.log(`✅ ${sources[index]} API: Success`);
-        } else {
-          console.warn(`❌ ${sources[index]} API: Failed -`, result.reason);
-        }
-      });
-
       // Fallback symbol if still unknown
       if (metadata.symbol === 'UNKNOWN') {
         metadata.symbol = mintAddress.slice(0, 8);
       }
-
-      console.log('📊 Final metadata:', {
-        name: metadata.name,
-        symbol: metadata.symbol,
-        price: metadata.price,
-        hasLogo: !!metadata.logoURI,
-        hasLinks: !!(metadata.website || metadata.twitter)
-      });
 
       return metadata;
     } catch (error) {
@@ -98,23 +78,7 @@ export class SolanaService {
 
   private async fetchJupiterMetadata(mintAddress: string, metadata: TokenMetadata): Promise<void> {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-      const response = await fetch(`https://token.jup.ag/strict`, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'SolTokenTracker/1.0'
-        }
-      });
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Jupiter API responded with ${response.status}`);
-      }
-
+      const response = await fetch(`https://token.jup.ag/strict`);
       const tokens = await response.json();
       const tokenInfo = tokens.find((token: any) => token.address === mintAddress);
       
@@ -122,115 +86,90 @@ export class SolanaService {
         metadata.name = tokenInfo.name || metadata.name;
         metadata.symbol = tokenInfo.symbol || metadata.symbol;
         metadata.logoURI = tokenInfo.logoURI || metadata.logoURI;
-        console.log('📝 Jupiter: Found token info');
-      } else {
-        console.log('📝 Jupiter: Token not found in list');
       }
     } catch (error) {
-      console.warn('Jupiter API failed:', error instanceof Error ? error.message : error);
-      throw error;
+      console.warn('Failed to fetch token metadata from Jupiter:', error);
     }
   }
 
   private async fetchCoinGeckoMetadata(mintAddress: string, metadata: TokenMetadata): Promise<void> {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
       // First try to get the coin by contract address
       const response = await fetch(
         `https://api.coingecko.com/api/v3/coins/solana/contract/${mintAddress}`,
         {
-          signal: controller.signal,
           headers: {
             'Accept': 'application/json',
-            'User-Agent': 'SolTokenTracker/1.0'
           }
         }
       );
       
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.log('📝 CoinGecko: Token not found');
-          return;
+      if (response.ok) {
+        const data = await response.json();
+        
+        metadata.name = data.name || metadata.name;
+        metadata.symbol = data.symbol?.toUpperCase() || metadata.symbol;
+        metadata.logoURI = data.image?.large || data.image?.small || metadata.logoURI;
+        metadata.description = data.description?.en || metadata.description;
+        metadata.website = data.links?.homepage?.[0] || metadata.website;
+        metadata.twitter = data.links?.twitter_screen_name ? 
+          `https://twitter.com/${data.links.twitter_screen_name}` : metadata.twitter;
+        metadata.telegram = data.links?.telegram_channel_identifier ?
+          `https://t.me/${data.links.telegram_channel_identifier}` : metadata.telegram;
+        metadata.discord = data.links?.discord || metadata.discord;
+        metadata.coingeckoId = data.id;
+        metadata.rank = data.market_cap_rank || metadata.rank;
+        
+        // Market data
+        if (data.market_data) {
+          metadata.price = data.market_data.current_price?.usd || metadata.price;
+          metadata.priceChange24h = data.market_data.price_change_percentage_24h || metadata.priceChange24h;
+          metadata.marketCap = data.market_data.market_cap?.usd || metadata.marketCap;
+          metadata.volume24h = data.market_data.total_volume?.usd || metadata.volume24h;
         }
-        throw new Error(`CoinGecko API responded with ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      metadata.name = data.name || metadata.name;
-      metadata.symbol = data.symbol?.toUpperCase() || metadata.symbol;
-      metadata.logoURI = data.image?.large || data.image?.small || metadata.logoURI;
-      metadata.description = data.description?.en || metadata.description;
-      metadata.website = data.links?.homepage?.[0] || metadata.website;
-      metadata.twitter = data.links?.twitter_screen_name ? 
-        `https://twitter.com/${data.links.twitter_screen_name}` : metadata.twitter;
-      metadata.telegram = data.links?.telegram_channel_identifier ?
-        `https://t.me/${data.links.telegram_channel_identifier}` : metadata.telegram;
-      metadata.discord = data.links?.discord || metadata.discord;
-      metadata.coingeckoId = data.id;
-      metadata.rank = data.market_cap_rank || metadata.rank;
-      
-      // Market data
-      if (data.market_data) {
-        metadata.price = data.market_data.current_price?.usd || metadata.price;
-        metadata.priceChange24h = data.market_data.price_change_percentage_24h || metadata.priceChange24h;
-        metadata.marketCap = data.market_data.market_cap?.usd || metadata.marketCap;
-        metadata.volume24h = data.market_data.total_volume?.usd || metadata.volume24h;
-        console.log('📝 CoinGecko: Found market data');
+      } else if (response.status === 429) {
+        console.warn('CoinGecko API rate limited - skipping market data');
+      } else if (response.status === 404) {
+        console.warn('Token not found on CoinGecko - this is normal for newer tokens');
+      } else {
+        console.warn(`CoinGecko API error ${response.status} - skipping market data`);
       }
     } catch (error) {
-      console.warn('CoinGecko API failed:', error instanceof Error ? error.message : error);
-      throw error;
+      console.warn('Failed to fetch token metadata from CoinGecko:', error);
+      // CoinGecko API is optional - continue without it
     }
   }
 
   private async fetchBirdeyeMetadata(mintAddress: string, metadata: TokenMetadata): Promise<void> {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      // Birdeye API for Solana token price data
-      const response = await fetch(
+      // Try Birdeye API without API key first (some endpoints work without auth)
+      const priceResponse = await fetch(
         `https://public-api.birdeye.so/defi/price?address=${mintAddress}`,
         {
-          signal: controller.signal,
           headers: {
-            'X-API-KEY': 'public',
             'Accept': 'application/json',
-            'User-Agent': 'SolTokenTracker/1.0'
           }
         }
       );
       
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const data = await response.json();
+      if (priceResponse.ok) {
+        const data = await priceResponse.json();
         if (data.success && data.data) {
           metadata.price = data.data.value || metadata.price;
-          console.log('📝 Birdeye: Found price data');
         }
+      } else if (priceResponse.status === 401) {
+        console.warn('Birdeye API requires authentication - skipping price data');
       }
 
-      // Also try to get token info from Birdeye
-      const timeoutId2 = setTimeout(() => controller.abort(), 10000);
+      // Try token overview endpoint
       const tokenInfoResponse = await fetch(
         `https://public-api.birdeye.so/defi/token_overview?address=${mintAddress}`,
         {
-          signal: controller.signal,
           headers: {
-            'X-API-KEY': 'public',
             'Accept': 'application/json',
-            'User-Agent': 'SolTokenTracker/1.0'
           }
         }
       );
-
-      clearTimeout(timeoutId2);
 
       if (tokenInfoResponse.ok) {
         const tokenData = await tokenInfoResponse.json();
@@ -242,62 +181,54 @@ export class SolanaService {
           metadata.marketCap = info.mc || metadata.marketCap;
           metadata.volume24h = info.v24hUSD || metadata.volume24h;
           metadata.priceChange24h = info.priceChange24hPercent || metadata.priceChange24h;
-          console.log('📝 Birdeye: Found token overview');
         }
+      } else if (tokenInfoResponse.status === 401) {
+        console.warn('Birdeye API requires authentication - skipping token overview data');
       }
     } catch (error) {
-      console.warn('Birdeye API failed:', error instanceof Error ? error.message : error);
-      throw error;
+      console.warn('Failed to fetch token metadata from Birdeye:', error);
+      // Birdeye API is optional - continue without it
     }
   }
 
   private async fetchDexScreenerMetadata(mintAddress: string, metadata: TokenMetadata): Promise<void> {
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
       const response = await fetch(
-        `https://api.dexscreener.com/latest/dex/tokens/${mintAddress}`,
-        {
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'SolTokenTracker/1.0'
-          }
-        }
+        `https://api.dexscreener.com/latest/dex/tokens/${mintAddress}`
       );
       
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`DexScreener API responded with ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (data.pairs && data.pairs.length > 0) {
-        const pair = data.pairs[0]; // Use the first (usually most liquid) pair
-        
-        metadata.name = pair.baseToken?.name || metadata.name;
-        metadata.symbol = pair.baseToken?.symbol || metadata.symbol;
-        metadata.price = parseFloat(pair.priceUsd) || metadata.price;
-        metadata.priceChange24h = parseFloat(pair.priceChange?.h24) || metadata.priceChange24h;
-        metadata.volume24h = parseFloat(pair.volume?.h24) || metadata.volume24h;
-        metadata.marketCap = parseFloat(pair.marketCap) || metadata.marketCap;
-        
-        // Social links from DexScreener
-        if (pair.info) {
-          metadata.website = pair.info.website || metadata.website;
-          metadata.twitter = pair.info.twitter || metadata.twitter;
-          metadata.telegram = pair.info.telegram || metadata.telegram;
-          metadata.discord = pair.info.discord || metadata.discord;
+      if (response.ok) {
+        const data = await response.json();
+        if (data.pairs && data.pairs.length > 0) {
+          const pair = data.pairs[0]; // Use the first (usually most liquid) pair
+          
+          metadata.name = pair.baseToken?.name || metadata.name;
+          metadata.symbol = pair.baseToken?.symbol || metadata.symbol;
+          metadata.price = parseFloat(pair.priceUsd) || metadata.price;
+          metadata.priceChange24h = parseFloat(pair.priceChange?.h24) || metadata.priceChange24h;
+          metadata.volume24h = parseFloat(pair.volume?.h24) || metadata.volume24h;
+          metadata.marketCap = parseFloat(pair.marketCap) || metadata.marketCap;
+          
+          // Social links from DexScreener
+          if (pair.info) {
+            metadata.website = pair.info.website || metadata.website;
+            metadata.twitter = pair.info.twitter || metadata.twitter;
+            metadata.telegram = pair.info.telegram || metadata.telegram;
+            metadata.discord = pair.info.discord || metadata.discord;
+          }
+        } else {
+          console.warn('No trading pairs found on DexScreener for this token');
         }
-        console.log('📝 DexScreener: Found trading pair data');
+      } else if (response.status === 429) {
+        console.warn('DexScreener API rate limited - skipping market data');
+      } else if (response.status === 404) {
+        console.warn('Token not found on DexScreener - this is normal for tokens without active pairs');
       } else {
-        console.log('📝 DexScreener: No trading pairs found');
+        console.warn(`DexScreener API error ${response.status} - skipping market data`);
       }
     } catch (error) {
-      console.warn('DexScreener API failed:', error instanceof Error ? error.message : error);
-      throw error;
+      console.warn('Failed to fetch token metadata from DexScreener:', error);
+      // DexScreener API is optional - continue without it
     }
   }
 
