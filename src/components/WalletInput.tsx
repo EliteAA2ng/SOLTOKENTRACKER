@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, AlertTriangle, Info } from 'lucide-react';
-import { COMMON_TOKENS } from '../config';
+import { COMMON_TOKENS, DEFAULT_CONFIG } from '../config';
 import { WalletConnection } from './WalletConnection';
 
 interface WalletInputProps {
@@ -39,7 +39,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   
   const [tokenMint, setTokenMint] = useState(savedData.tokenMint || '');
   const [walletAddress, setWalletAddress] = useState(savedData.walletAddress || '');
-  const [heliusKey, setHeliusKey] = useState(savedData.heliusKey || '');
+  const [heliusKey, setHeliusKey] = useState(savedData.heliusKey || DEFAULT_CONFIG.defaultHeliusKey);
   const [seconds, setSeconds] = useState(savedData.seconds || 600);
   const [error, setError] = useState('');
 
@@ -71,17 +71,14 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
       return;
     }
 
-    if (!heliusKey.trim()) {
-      setError('Helius API key is required for optimal performance.');
-      return;
-    }
-
     if (seconds < 5 || seconds > 86400) {
       setError('Lookback period must be between 5 and 86400 seconds (24 hours).');
       return;
     }
 
-    onSubmit({ tokenMint: tokenMint.trim(), walletAddress: walletAddress.trim(), heliusKey: heliusKey.trim(), seconds });
+    // Use the provided heliusKey or fall back to default
+    const finalHeliusKey = heliusKey.trim() || DEFAULT_CONFIG.defaultHeliusKey;
+    onSubmit({ tokenMint: tokenMint.trim(), walletAddress: walletAddress.trim(), heliusKey: finalHeliusKey, seconds });
   };
 
   return (
@@ -173,23 +170,23 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
           {/* Helius API Key */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 block">
-              Helius API Key <span className="text-red-500">*</span>
+              Helius API Key (Optional)
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={heliusKey}
                 onChange={(e) => setHeliusKey(e.target.value)}
-                placeholder="Your Helius API key for enhanced performance"
+                placeholder="Default key provided - enter your own for higher limits"
                 className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
                 disabled={loading}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
               </div>
             </div>
             <p className="text-xs text-slate-500">
-              Get your free API key at <a href="https://helius.xyz" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:text-violet-700">helius.xyz</a>
+              Default key included. Get your own for higher rate limits at <a href="https://helius.xyz" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:text-violet-700">helius.xyz</a>
             </p>
           </div>
 
