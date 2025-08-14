@@ -1,5 +1,5 @@
 import { TokenMetadata } from '../types';
-import { ExternalLink, TrendingUp, TrendingDown, Globe, Twitter, MessageCircle, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, Globe, Twitter, MessageCircle, Users } from 'lucide-react';
 
 interface TokenInfoCardProps {
   tokenMetadata: TokenMetadata;
@@ -153,7 +153,6 @@ export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
                 >
                   <Globe className="w-4 h-4" />
                   Website
-                  <ExternalLink className="w-3 h-3" />
                 </a>
               )}
               {tokenMetadata.twitter && (
@@ -165,7 +164,6 @@ export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
                 >
                   <Twitter className="w-4 h-4" />
                   Twitter
-                  <ExternalLink className="w-3 h-3" />
                 </a>
               )}
               {tokenMetadata.telegram && (
@@ -177,7 +175,6 @@ export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
                 >
                   <MessageCircle className="w-4 h-4" />
                   Telegram
-                  <ExternalLink className="w-3 h-3" />
                 </a>
               )}
               {tokenMetadata.discord && (
@@ -189,7 +186,6 @@ export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
                 >
                   <Users className="w-4 h-4" />
                   Discord
-                  <ExternalLink className="w-3 h-3" />
                 </a>
               )}
             </div>
