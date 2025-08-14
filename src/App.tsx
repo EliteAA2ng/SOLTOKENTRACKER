@@ -3,10 +3,11 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
+import { ApiStatusModal } from './components/ApiStatusModal';
 import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Activity } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ function TokenTracker() {
   const [streamTransfers, setStreamTransfers] = useState<TokenTransfer[]>([]);
   const [streamStart, setStreamStart] = useState<number | null>(null);
   const [isTracking, setIsTracking] = useState(false);
+  const [showApiStatus, setShowApiStatus] = useState(false);
   const isStreaming = useRef(false);
 
   const { data: tokenMetadata, isLoading: isLoadingMetadata } = useQuery({
@@ -126,6 +128,15 @@ function TokenTracker() {
             </div>
 
             <div className="flex items-center gap-3 text-sm text-slate-600">
+              <button
+                onClick={() => setShowApiStatus(true)}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors"
+                title="Check API Status"
+              >
+                <Activity className="w-3 h-3" />
+                API Status
+              </button>
+              <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
               <span>{tokenMetadata?.symbol || 'TOKEN'}</span>
               <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
               <span>Lookback: {appState.seconds}s</span>
@@ -216,6 +227,9 @@ function TokenTracker() {
           <div className="text-center text-slate-600">Scanning blockchain for transfers...</div>
         )}
       </div>
+
+      {/* API Status Modal */}
+      <ApiStatusModal isOpen={showApiStatus} onClose={() => setShowApiStatus(false)} />
     </div>
   );
 }
