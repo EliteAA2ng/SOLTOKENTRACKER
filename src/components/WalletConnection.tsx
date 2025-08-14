@@ -46,6 +46,55 @@ const detectWallets = () => {
     });
   }
 
+  // Check for MetaMask with Solana support (Snaps or Flask)
+  if (typeof window !== 'undefined' && (window as any).ethereum?.isMetaMask) {
+    const ethereum = (window as any).ethereum;
+    // Check if MetaMask has Solana Snap installed or is Flask version
+    if (ethereum.isFlask || ethereum._metamask?.isUnlocked) {
+      wallets.push({
+        name: 'MetaMask',
+        icon: '🦊',
+        adapter: {
+          connect: async () => {
+            try {
+              // Try to use Solana Snap if available
+              if (ethereum.request) {
+                // Request Solana Snap installation/connection
+                const result = await ethereum.request({
+                  method: 'wallet_requestSnaps',
+                  params: {
+                    'npm:@solana/wallet-adapter-metamask': {},
+                  },
+                });
+                
+                if (result) {
+                  // Get Solana account from Snap
+                  const accounts = await ethereum.request({
+                    method: 'wallet_invokeSnap',
+                    params: {
+                      snapId: 'npm:@solana/wallet-adapter-metamask',
+                      request: { method: 'getAccounts' },
+                    },
+                  });
+                  
+                  if (accounts && accounts.length > 0) {
+                    return { publicKey: { toString: () => accounts[0] } };
+                  }
+                }
+              }
+              
+              // Fallback: Show instructions for manual setup
+              throw new Error('Please install Solana Snap for MetaMask or use MetaMask Flask');
+            } catch (error) {
+              throw new Error('MetaMask Solana support not available. Try MetaMask Flask or install Solana Snap.');
+            }
+          },
+          publicKey: null,
+        },
+      });
+    }
+  }
+
   // Check for Coinbase Wallet (has Solana support)
   if (typeof window !== 'undefined' && (window as any).coinbaseSolana) {
     wallets.push({
@@ -132,7 +181,18 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
       setIsOpen(false);
     } catch (error) {
       console.error(`Failed to connect to ${wallet.name}:`, error);
-      alert(`Failed to connect to ${wallet.name}. Please try again.`);
+      
+      // Provide specific error messages for MetaMask
+      if (wallet.name === 'MetaMask') {
+        const errorMessage = error instanceof Error ? error.message : 'Connection failed';
+        if (errorMessage.includes('Snap')) {
+          alert(`MetaMask Solana Snap required.\n\nTo use MetaMask with Solana:\n1. Install MetaMask Flask\n2. Enable Solana Snap\n3. Or use a native Solana wallet like Phantom`);
+        } else {
+          alert(`MetaMask connection failed.\n\nTry:\n• MetaMask Flask with Solana Snap\n• Or use Phantom/Solflare for better Solana support`);
+        }
+      } else {
+        alert(`Failed to connect to ${wallet.name}.\n\nPlease make sure:\n• The wallet is unlocked\n• You approve the connection\n• Try refreshing the page`);
+      }
     } finally {
       setConnecting(null);
     }
@@ -219,9 +279,9 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
                   <Wallet className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No Solana wallets found</h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Install a Solana-compatible wallet to connect. MetaMask doesn't support Solana natively.
+                    Install a Solana wallet or enable Solana support in MetaMask.
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 mb-4">
                     <a
                       href="https://phantom.app/"
                       target="_blank"
@@ -259,9 +319,23 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
-                  <p className="text-xs text-gray-500 mt-4">
-                    Note: MetaMask is for Ethereum. These wallets support Solana.
-                  </p>
+                  <div className="border-t pt-4">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Already have MetaMask?</p>
+                    <div className="flex flex-col gap-2">
+                      <a
+                        href="https://metamask.io/flask/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs transition-colors"
+                      >
+                        🦊 Get MetaMask Flask (Developer)
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                      <p className="text-xs text-gray-500">
+                        MetaMask Flask supports Solana through Snaps
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
