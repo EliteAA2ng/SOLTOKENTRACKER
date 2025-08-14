@@ -59,34 +59,46 @@ const detectWallets = () => {
             try {
               // Try to use Solana Snap if available
               if (ethereum.request) {
-                // Request Solana Snap installation/connection
-                const result = await ethereum.request({
-                  method: 'wallet_requestSnaps',
-                  params: {
-                    'npm:@solana/wallet-adapter-metamask': {},
-                  },
-                });
-                
-                if (result) {
-                  // Get Solana account from Snap
-                  const accounts = await ethereum.request({
-                    method: 'wallet_invokeSnap',
-                    params: {
-                      snapId: 'npm:@solana/wallet-adapter-metamask',
-                      request: { method: 'getAccounts' },
-                    },
+                // First, try to check if any Solana-related snaps are installed
+                try {
+                  const installedSnaps = await ethereum.request({
+                    method: 'wallet_getSnaps',
                   });
                   
-                  if (accounts && accounts.length > 0) {
-                    return { publicKey: { toString: () => accounts[0] } };
+                  // Look for any Solana-related snaps
+                  const solanaSnaps = Object.keys(installedSnaps || {}).filter(snapId => 
+                    snapId.includes('solana') || snapId.includes('Solana')
+                  );
+                  
+                  if (solanaSnaps.length > 0) {
+                    // Try to get accounts from the first available Solana snap
+                    const accounts = await ethereum.request({
+                      method: 'wallet_invokeSnap',
+                      params: {
+                        snapId: solanaSnaps[0],
+                        request: { method: 'getAccounts' },
+                      },
+                    });
+                    
+                    if (accounts && accounts.length > 0) {
+                      return { publicKey: { toString: () => accounts[0] } };
+                    }
                   }
+                  
+                  // If no Solana snaps are installed, try to install one
+                  // Note: This is a placeholder for when official Solana snaps are available
+                  throw new Error('No Solana Snap installed. Please install a Solana Snap from the MetaMask Snap directory.');
+                  
+                } catch (snapError) {
+                  // If Snap operations fail, provide helpful guidance
+                  throw new Error('MetaMask Solana Snap not available. Please use MetaMask Flask with a Solana Snap, or try a native Solana wallet like Phantom.');
                 }
               }
               
               // Fallback: Show instructions for manual setup
               throw new Error('Please install Solana Snap for MetaMask or use MetaMask Flask');
             } catch (error) {
-              throw new Error('MetaMask Solana support not available. Try MetaMask Flask or install Solana Snap.');
+              throw error;
             }
           },
           publicKey: null,
@@ -186,9 +198,9 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
       if (wallet.name === 'MetaMask') {
         const errorMessage = error instanceof Error ? error.message : 'Connection failed';
         if (errorMessage.includes('Snap')) {
-          alert(`MetaMask Solana Snap required.\n\nTo use MetaMask with Solana:\n1. Install MetaMask Flask\n2. Enable Solana Snap\n3. Or use a native Solana wallet like Phantom`);
+          alert(`MetaMask Solana support is experimental.\n\n🔧 Current options:\n• Use MetaMask Flask (developer version)\n• Wait for official Solana Snap release\n• Use Phantom or Solflare for full Solana support\n\n💡 Recommended: Use Phantom wallet for the best Solana experience!`);
         } else {
-          alert(`MetaMask connection failed.\n\nTry:\n• MetaMask Flask with Solana Snap\n• Or use Phantom/Solflare for better Solana support`);
+          alert(`MetaMask doesn't fully support Solana yet.\n\n✅ Better options:\n• Phantom - Most popular Solana wallet\n• Solflare - Feature-rich Solana wallet\n• Backpack - Modern Solana wallet\n\nThese wallets are built specifically for Solana!`);
         }
       } else {
         alert(`Failed to connect to ${wallet.name}.\n\nPlease make sure:\n• The wallet is unlocked\n• You approve the connection\n• Try refreshing the page`);
@@ -322,18 +334,24 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
                   <div className="border-t pt-4">
                     <p className="text-sm font-medium text-gray-700 mb-2">Already have MetaMask?</p>
                     <div className="flex flex-col gap-2">
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-xs text-amber-800 mb-2">
+                          <strong>⚠️ MetaMask + Solana is experimental</strong>
+                        </p>
+                        <p className="text-xs text-amber-700">
+                          While MetaMask is exploring Solana support through Snaps, it's not ready for production use. 
+                          For the best Solana experience, we recommend using Phantom or Solflare.
+                        </p>
+                      </div>
                       <a
                         href="https://metamask.io/flask/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs transition-colors"
                       >
-                        🦊 Get MetaMask Flask (Developer)
+                        🦊 Try MetaMask Flask (Experimental)
                         <ExternalLink className="w-3 h-3" />
                       </a>
-                      <p className="text-xs text-gray-500">
-                        MetaMask Flask supports Solana through Snaps
-                      </p>
                     </div>
                   </div>
                 </div>
