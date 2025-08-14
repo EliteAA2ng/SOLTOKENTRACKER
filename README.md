@@ -1,15 +1,19 @@
 # Solana Token Transfer Tracker
 
-A modern React web application that tracks transfers for any Solana SPL token. Built with TypeScript, React, and Solana Web3.js with optimized performance for real-time analysis.
+A modern React web application that tracks transfers for any Solana SPL token with comprehensive token information and market data. Built with TypeScript, React, and Solana Web3.js with optimized performance for real-time analysis.
 
 ## Features
 
 - 🔍 **Token-Agnostic**: Track transfers for any Solana SPL token by mint address
-- 💰 **Comprehensive Detection**: Finds both outgoing and incoming transfers
-- ⚡ **Fast Performance**: Optimized with shorter lookback periods (minutes instead of hours)
-- 🎨 **Modern UI**: Clean, responsive design with real-time loading states
+- 📊 **Comprehensive Token Info**: Displays token name, symbol, current price, market cap, volume, and social links
+- 💰 **Multi-Source Data**: Fetches token data from CoinGecko, DexScreener, Birdeye, and Jupiter
+- 💸 **Transfer Detection**: Finds both outgoing and incoming transfers with detailed analytics
+- ⚡ **Fast Performance**: Optimized with shorter lookback periods (seconds to minutes)
+- 🎨 **Modern UI**: Clean, responsive design with real-time loading states and animations
 - 🔗 **Enhanced RPC**: Helius integration for faster, more reliable data fetching
-- 📊 **Detailed Analytics**: Transfer amounts, timestamps, counterparties, and explorer links
+- 🌐 **Social Integration**: Direct links to project websites, Twitter, Telegram, and Discord
+- 📈 **Live Market Data**: Real-time price, 24h change, market cap, and trading volume
+- 🔄 **Streaming Results**: Real-time transfer discovery with batch updates
 
 ## Quick Start
 
@@ -39,8 +43,14 @@ The app will be available at `http://localhost:5173`
 1. **Enter Token Mint Address**: Paste any Solana SPL token mint address
 2. **Optional Wallet Filter**: Enter a specific wallet address to filter transfers
 3. **Add Helius API Key**: Your key for enhanced performance and reliability
-4. **Select Time Period**: Choose lookback window (5 minutes to 24 hours)
+4. **Select Time Period**: Choose lookback window (5 seconds to 24 hours)
 5. **Analyze**: Click "Analyze Transfers" to fetch and display results
+
+The app will automatically:
+- Fetch comprehensive token information (name, price, market data)
+- Display token logo, social links, and project details
+- Show real-time transfer data with streaming updates
+- Provide direct links to blockchain explorers
 
 ## Configuration
 
@@ -65,6 +75,23 @@ For best performance and reliability:
 # Optional: Set as environment variable
 echo "VITE_HELIUS_API_KEY=your-key-here" > .env.local
 ```
+
+## Data Sources
+
+The app fetches comprehensive token information from multiple reliable sources:
+
+### Token Metadata & Pricing
+- **CoinGecko API**: Market data, prices, descriptions, social links, and rankings
+- **DexScreener**: Real-time price data, market cap, and trading volumes
+- **Birdeye**: Solana-specific token pricing and market analytics
+- **Jupiter Token List**: Token names, symbols, and logos
+
+### Blockchain Data
+- **Helius RPC**: Enhanced Solana RPC with indexed transaction search
+- **Standard Solana RPC**: Fallback for basic blockchain queries
+- **Block Scanning**: Direct blockchain analysis for comprehensive transfer detection
+
+All data is fetched in parallel for optimal performance, with graceful fallbacks if any source is unavailable.
 
 ## How It Works
 

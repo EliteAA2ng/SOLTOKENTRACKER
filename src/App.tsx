@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
+import { TokenInfoCard } from './components/TokenInfoCard';
 import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
@@ -146,6 +147,38 @@ function TokenTracker() {
           </div>
         )}
 
+        {/* Token Information Card */}
+        {isLoadingMetadata && (
+          <div className="mb-8">
+            <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden animate-pulse">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-slate-200">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-slate-300 rounded-full"></div>
+                  <div className="flex-1">
+                    <div className="h-8 bg-slate-300 rounded w-48 mb-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-32"></div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="bg-slate-50 rounded-lg p-4">
+                      <div className="h-4 bg-slate-200 rounded w-20 mb-2"></div>
+                      <div className="h-6 bg-slate-300 rounded w-24"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {tokenMetadata && (
+          <div className="mb-8">
+            <TokenInfoCard tokenMetadata={tokenMetadata} />
+          </div>
+        )}
+
         {error && (
           <div className="max-w-2xl mx-auto mb-6">
             <div className="bg-white border border-red-200 rounded-xl p-6">
@@ -165,8 +198,18 @@ function TokenTracker() {
           </div>
         )}
 
+        {/* Transfer List Section */}
         {(combinedTransfers.length > 0) && (
-          <TransferList transfers={combinedTransfers} tokenMetadata={tokenMetadata!} walletAddress={appState.walletAddress} />
+          <div>
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-slate-900">Recent Transfers</h2>
+              <p className="text-sm text-slate-600">
+                {combinedTransfers.length} transfer{combinedTransfers.length !== 1 ? 's' : ''} found
+                {appState.walletAddress ? ` for wallet ${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : ''}
+              </p>
+            </div>
+            <TransferList transfers={combinedTransfers} tokenMetadata={tokenMetadata!} walletAddress={appState.walletAddress} />
+          </div>
         )}
 
         {isLoading && combinedTransfers.length === 0 && (

@@ -19,6 +19,20 @@ export interface TokenMetadata {
   symbol: string;
   decimals: number;
   logoURI?: string;
+  // Enhanced price and market data
+  price?: number;
+  priceChange24h?: number;
+  marketCap?: number;
+  volume24h?: number;
+  supply?: number;
+  rank?: number;
+  description?: string;
+  website?: string;
+  twitter?: string;
+  telegram?: string;
+  discord?: string;
+  coingeckoId?: string;
+  coinmarketcapId?: string;
 }
 
 export interface WalletData {
