@@ -23,16 +23,6 @@ export async function checkApiStatus(): Promise<ApiStatus[]> {
       }
     },
     {
-      name: 'Birdeye',
-      url: 'https://public-api.birdeye.so/defi/price?address=So11111111111111111111111111111111111111112',
-      testFn: async () => {
-        const response = await fetch('https://public-api.birdeye.so/defi/price?address=So11111111111111111111111111111111111111112', {
-          headers: { 'Accept': 'application/json' }
-        });
-        return { ok: response.ok, status: response.status };
-      }
-    },
-    {
       name: 'DexScreener',
       url: 'https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112',
       testFn: async () => {

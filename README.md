@@ -6,7 +6,7 @@ A modern React web application that tracks transfers for any Solana SPL token wi
 
 - 🔍 **Token-Agnostic**: Track transfers for any Solana SPL token by mint address
 - 📊 **Comprehensive Token Info**: Displays token name, symbol, current price, market cap, volume, and social links
-- 💰 **Multi-Source Data**: Fetches token data from CoinGecko, DexScreener, Birdeye, and Jupiter
+- 💰 **Multi-Source Data**: Fetches token data from CoinGecko, DexScreener, and Jupiter
 - 💸 **Transfer Detection**: Finds both outgoing and incoming transfers with detailed analytics
 - ⚡ **Fast Performance**: Optimized with shorter lookback periods (seconds to minutes)
 - 🎨 **Modern UI**: Clean, responsive design with real-time loading states and animations
@@ -83,7 +83,6 @@ The app fetches comprehensive token information from multiple reliable sources:
 ### Token Metadata & Pricing
 - **CoinGecko API**: Market data, prices, descriptions, social links, and rankings
 - **DexScreener**: Real-time price data, market cap, and trading volumes
-- **Birdeye**: Solana-specific token pricing and market analytics
 - **Jupiter Token List**: Token names, symbols, and logos
 
 ### Blockchain Data
