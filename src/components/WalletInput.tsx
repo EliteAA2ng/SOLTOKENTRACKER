@@ -40,7 +40,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   const [tokenMint, setTokenMint] = useState(savedData.tokenMint || '');
   const [walletAddress, setWalletAddress] = useState(savedData.walletAddress || '');
   const [heliusKey, setHeliusKey] = useState(savedData.heliusKey || '');
-  const [seconds, setSeconds] = useState(savedData.seconds || 60);
+  const [seconds, setSeconds] = useState(savedData.seconds || 600);
   const [error, setError] = useState('');
 
   // Save form data whenever fields change
@@ -196,10 +196,15 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
           {/* Lookback Period (seconds) */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 block">
-              Lookback Period (seconds)
+              Lookback Period
             </label>
             <div className="grid grid-cols-4 gap-2 mb-3">
-              {[30, 60, 300, 600].map((value) => (
+              {[
+                { label: '30s', value: 30 },
+                { label: '10min', value: 600 },
+                { label: '1hr', value: 3600 },
+                { label: '24hr', value: 86400 }
+              ].map(({ label, value }) => (
                 <button
                   key={value}
                   type="button"
@@ -211,7 +216,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                   }`}
                   disabled={loading}
                 >
-                  {value}s
+                  {label}
                 </button>
               ))}
             </div>
@@ -219,7 +224,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               <input
                 type="number"
                 value={seconds}
-                onChange={(e) => setSeconds(parseInt(e.target.value) || 60)}
+                onChange={(e) => setSeconds(parseInt(e.target.value) || 600)}
                 min="5"
                 max="86400"
                 className="w-full h-12 px-4 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all"
@@ -227,7 +232,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               />
             </div>
             <p className="text-xs text-slate-500">
-              How far back to look for transfers (5-86400 seconds)
+              How far back to look for transfers (5 seconds to 24 hours)
             </p>
           </div>
 

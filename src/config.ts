@@ -10,7 +10,7 @@ export const COMMON_TOKENS = {
 } as const;
 
 export const DEFAULT_CONFIG = {
-	lookbackSeconds: 60, // default window in seconds (reduced granularity)
+	lookbackSeconds: 600, // default window in seconds (10 minutes for better UX)
 	delayMsBetweenRequests: 50,
 	maxRetries: 3,
 	rpcTimeout: 30000,
