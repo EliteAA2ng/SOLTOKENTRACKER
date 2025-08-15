@@ -93,23 +93,8 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 -mt-16">
+    <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 rounded-2xl mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-violet-400 to-purple-500 rounded-lg flex items-center justify-center">
-              <Search className="w-4 h-4 text-white" />
-            </div>
-          </div>
-          <h1 className="text-2xl font-semibold text-slate-900 mb-2">
-            Track Token Transfers
-          </h1>
-          <p className="text-slate-600 text-sm leading-relaxed">
-            Enter a token address to analyze transfers on Solana
-          </p>
-        </div>
-
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Token Mint Address */}
