@@ -50,6 +50,29 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   const [walletAddressSource, setWalletAddressSource] = useState<'manual' | 'connected' | null>(
     savedData.walletAddressSource || null
   );
+  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
+
+  // Check if auto-connect should be attempted
+  useEffect(() => {
+    const hasAttempted = sessionStorage.getItem('autoConnectAttempted');
+    if (!hasAttempted && !connected) {
+      setIsAutoConnecting(true);
+      // Set a timeout to hide auto-connecting status after reasonable time
+      const timeout = setTimeout(() => {
+        setIsAutoConnecting(false);
+      }, 5000); // Hide after 5 seconds regardless
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [connected]);
+
+  // Hide auto-connecting status when wallet connects or when auto-connect attempt is marked as completed
+  useEffect(() => {
+    const hasAttempted = sessionStorage.getItem('autoConnectAttempted');
+    if (hasAttempted || connected) {
+      setIsAutoConnecting(false);
+    }
+  }, [connected]);
 
   // Initialize form with saved data on component mount
   useEffect(() => {
@@ -261,38 +284,47 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                   }`}></div>
                 </div>
               </div>
-              {connected ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-green-700">
-                      Connected
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={disconnect}
-                    className="px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                    disabled={loading}
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
-                  <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                  <span className="text-sm text-slate-600">
-                    Auto-connecting...
-                  </span>
-                </div>
-              )}
+                 {connected ? (
+                   <div className="flex items-center gap-2">
+                     <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                       <span className="text-sm font-medium text-green-700">
+                         Connected
+                       </span>
+                     </div>
+                     <button
+                       type="button"
+                       onClick={disconnect}
+                       className="px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                       disabled={loading}
+                     >
+                       Disconnect
+                     </button>
+                   </div>
+                 ) : isAutoConnecting ? (
+                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                     <div className="w-2 h-2 bg-slate-400 rounded-full animate-pulse"></div>
+                     <span className="text-sm text-slate-600">
+                       Auto-connecting...
+                     </span>
+                   </div>
+                 ) : (
+                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                     <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                     <span className="text-sm text-slate-600">
+                       No wallet connected
+                     </span>
+                   </div>
+                 )}
             </div>
             <p className="text-xs text-slate-500">
               {connected
                 ? '🟢 Wallet connected automatically (disconnect to enable manual entry)'
+                : isAutoConnecting
+                ? '🔄 Attempting to connect to your Solana wallet automatically...'
                 : walletAddressSource === 'manual'
                 ? '🔵 Manually entered address'
-                : 'Wallet will connect automatically on first visit, or manually enter an address'
+                : 'Auto-connect completed. You can manually enter an address to filter transfers'
               }
             </p>
           </div>
