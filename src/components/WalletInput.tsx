@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Search, AlertTriangle, Info } from 'lucide-react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { COMMON_TOKENS, DEFAULT_CONFIG } from '../config';
-import { WalletConnection } from './WalletConnection';
 
 interface WalletInputProps {
   onSubmit: (data: {
@@ -12,7 +13,6 @@ interface WalletInputProps {
     walletAddressSource?: 'manual' | 'connected' | null;
   }) => void;
   loading: boolean;
-  isAutoConnecting?: boolean;
 }
 
 // Form persistence helper
@@ -37,13 +37,14 @@ const loadFormData = () => {
   }
 };
 
-export default function WalletInput({ onSubmit, loading, isAutoConnecting = false }: WalletInputProps) {
+export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   const savedData = loadFormData();
+  const { connected, publicKey } = useWallet();
   
-  const [tokenMint, setTokenMint] = useState(savedData.tokenMint || '');
-  const [walletAddress, setWalletAddress] = useState(savedData.walletAddress || '');
-  const [heliusKey, setHeliusKey] = useState(savedData.heliusKey || DEFAULT_CONFIG.defaultHeliusKey);
-  const [seconds, setSeconds] = useState(savedData.seconds || 600);
+  const [tokenMint, setTokenMint] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
+  const [heliusKey, setHeliusKey] = useState('');
+  const [seconds, setSeconds] = useState(600);
   const [error, setError] = useState('');
   const [isFormInitialized, setIsFormInitialized] = useState(false);
   const [showRestoredMessage, setShowRestoredMessage] = useState(false);
@@ -56,77 +57,65 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
     const saved = loadFormData();
     let hasRestoredData = false;
     
-    if (saved.tokenMint) {
-      setTokenMint(saved.tokenMint);
-      hasRestoredData = true;
+    if (saved.tokenMint) { setTokenMint(saved.tokenMint); hasRestoredData = true; }
+    if (saved.walletAddress && !connected) { 
+      setWalletAddress(saved.walletAddress); 
+      hasRestoredData = true; 
     }
-    if (saved.walletAddress) {
-      setWalletAddress(saved.walletAddress);
-      hasRestoredData = true;
+    if (saved.walletAddressSource && !connected) { 
+      setWalletAddressSource(saved.walletAddressSource); 
     }
-    if (saved.walletAddressSource) {
-      setWalletAddressSource(saved.walletAddressSource);
+    if (saved.heliusKey && saved.heliusKey !== DEFAULT_CONFIG.defaultHeliusKey) { 
+      setHeliusKey(saved.heliusKey); 
+      hasRestoredData = true; 
     }
-    if (saved.heliusKey && saved.heliusKey !== DEFAULT_CONFIG.defaultHeliusKey) {
-      setHeliusKey(saved.heliusKey);
-      hasRestoredData = true;
-    }
-    if (saved.seconds && saved.seconds !== 600) {
-      setSeconds(saved.seconds);
-      hasRestoredData = true;
+    if (saved.seconds && saved.seconds !== 600) { 
+      setSeconds(saved.seconds); 
+      hasRestoredData = true; 
     }
     
     setIsFormInitialized(true);
     
-    // Show restored message if we restored any data
     if (hasRestoredData) {
       setShowRestoredMessage(true);
-      // Hide the message after 3 seconds
       setTimeout(() => setShowRestoredMessage(false), 3000);
     }
-  }, []);
+  }, [connected]);
+
+  // Handle wallet connection/disconnection
+  useEffect(() => {
+    if (connected && publicKey) {
+      // Wallet connected - set address and disable input
+      const address = publicKey.toString();
+      setWalletAddress(address);
+      setWalletAddressSource('connected');
+    } else if (!connected && walletAddressSource === 'connected') {
+      // Wallet disconnected - clear address and enable input
+      setWalletAddress('');
+      setWalletAddressSource(null);
+    }
+  }, [connected, publicKey, walletAddressSource]);
 
   // Save form data whenever fields change (but only after initialization)
   useEffect(() => {
     if (isFormInitialized) {
       const formData = { 
         tokenMint, 
-        walletAddress, 
+        walletAddress: walletAddressSource === 'connected' ? '' : walletAddress, // Don't save connected wallet address
         heliusKey, 
-        seconds,
-        walletAddressSource 
+        seconds, 
+        walletAddressSource: walletAddressSource === 'connected' ? null : walletAddressSource // Don't save connected state
       };
       saveFormData(formData);
     }
   }, [tokenMint, walletAddress, heliusKey, seconds, walletAddressSource, isFormInitialized]);
 
-  // Handle wallet connection - allow auto-connect during initialization
-  const handleWalletSelect = (address: string) => {
-    // During form initialization, allow wallet connection to override any saved state
-    // After initialization, only override if not manually typing
-    if (isFormInitialized && walletAddressSource === 'manual' && address !== '') {
-      // Don't override manual input with wallet connection (unless during initialization)
-      return;
-    }
-    
-    setWalletAddress(address);
-    // If wallet provides an address, it's connected; if empty, it's disconnected
-    setWalletAddressSource(address ? 'connected' : null);
-  };
-
   // Handle manual wallet address input
   const handleManualWalletInput = (address: string) => {
-    setWalletAddress(address);
-    
-    // Debounce the source setting to prevent conflicts with wallet connection
-    setTimeout(() => {
-      // If user is manually typing, mark as manual input
-      if (address.trim() !== '') {
-        setWalletAddressSource('manual');
-      } else {
-        setWalletAddressSource(null);
-      }
-    }, 100); // Small delay to prevent race conditions
+    if (walletAddressSource !== 'connected') {
+      setWalletAddress(address);
+      setWalletAddressSource(address.trim() ? 'manual' : null);
+    }
   };
 
   const validateAddress = (addr: string): boolean => {
@@ -190,64 +179,13 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
           </p>
           
           {/* Auto-connecting indicator */}
-          {isAutoConnecting && (
-            <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-              <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
-              <span>Auto-connecting to wallet...</span>
-            </div>
-          )}
+          {/* Removed auto-connecting indicator as WalletMultiButton handles it */}
           
           {/* Form data restored indicator */}
           {showRestoredMessage && (
             <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
               <div className="w-4 h-4 text-green-600">✓</div>
               <span>Previous form data restored</span>
-            </div>
-          )}
-          
-          {/* Debug: Auto-connect trigger (only in development) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 space-y-2">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log('🔄 Manual reset triggered');
-                    console.log('Before reset:', {
-                      sessionStorage: sessionStorage.getItem('walletAutoConnectAttempted'),
-                      formData: sessionStorage.getItem(FORM_STORAGE_KEY),
-                      localStorage: localStorage.getItem('walletName')
-                    });
-                    sessionStorage.removeItem('walletAutoConnectAttempted');
-                    sessionStorage.removeItem(FORM_STORAGE_KEY); // Clear form data from session
-                    localStorage.removeItem('walletName');
-                    console.log('🧹 Cleared session and local storage');
-                    setTimeout(() => {
-                      console.log('🔄 Reloading page...');
-                      window.location.reload();
-                    }, 500);
-                  }}
-                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded"
-                >
-                  🔄 Reset & Test Auto-Connect
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log('🚀 Manual auto-connect trigger');
-                    // Trigger a custom event that AutoConnectWallet can listen to
-                    window.dispatchEvent(new CustomEvent('forceAutoConnect'));
-                  }}
-                  className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded"
-                >
-                  🚀 Force Auto-Connect Now
-                </button>
-              </div>
-              <div className="text-xs text-gray-500">
-                Session: {sessionStorage.getItem('walletAutoConnectAttempted') || 'not set'} | 
-                Form: {sessionStorage.getItem(FORM_STORAGE_KEY) ? 'saved' : 'none'} |
-                Wallet: {localStorage.getItem('walletName') || 'none'}
-              </div>
             </div>
           )}
         </div>
@@ -301,39 +239,36 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
                 <input
                   type="text"
                   value={walletAddress}
-                  onChange={(e) => handleManualWalletInput(e.target.value)} // Use manual input handler
+                  onChange={(e) => handleManualWalletInput(e.target.value)}
                   placeholder={
-                    walletAddressSource === 'connected' 
-                      ? 'Wallet address (from connected wallet)' 
+                    connected 
+                      ? 'Connected wallet address' 
                       : 'Filter by specific wallet address'
                   }
                   className={`w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono ${
-                    walletAddressSource === 'connected' 
+                    connected 
                       ? 'bg-green-50 border-green-200 cursor-not-allowed' 
                       : 'bg-white'
                   }`}
-                  disabled={loading || walletAddressSource === 'connected'} // Disable when wallet is connected
+                  disabled={loading || connected}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <div className={`w-2 h-2 rounded-full ${
-                    walletAddressSource === 'connected' 
-                      ? 'bg-green-400' 
+                    connected
+                      ? 'bg-green-400'
                       : walletAddressSource === 'manual'
                       ? 'bg-blue-400'
                       : 'bg-slate-300'
                   }`}></div>
                 </div>
               </div>
-              <WalletConnection 
-                onWalletSelect={handleWalletSelect}
-                isAutoConnecting={isAutoConnecting}
-              />
+              <WalletMultiButton />
             </div>
             <p className="text-xs text-slate-500">
-              {walletAddressSource === 'connected'
-                ? '🟢 Connected wallet address (input disabled - disconnect wallet to enable manual entry)'
+              {connected
+                ? '🟢 Connected wallet address (disconnect to enable manual entry)'
                 : walletAddressSource === 'manual'
-                ? '🔵 Manually entered address (will be maintained)'
+                ? '🔵 Manually entered address'
                 : 'Connect your wallet or manually enter an address to filter transfers'
               }
             </p>
