@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
@@ -8,13 +9,14 @@ import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
 import { ArrowLeft, AlertCircle, Activity } from 'lucide-react';
+import { store } from './store/store';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
-      staleTime: 1000 * 60 * 2, // 2 minutes
       refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 60000, // 1 minute
     },
   },
 });
@@ -122,7 +124,10 @@ function TokenTracker() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <button onClick={handleReset} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+              <button
+                onClick={handleReset}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+              >
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
@@ -132,10 +137,12 @@ function TokenTracker() {
                   {tokenMetadata?.name || 'Token'} Transfer Analytics
                 </h1>
                 <p className="text-sm text-slate-600">
-                  {appState.walletAddress ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : `All ${tokenMetadata?.symbol || 'Token'} transfers`}
+                  {appState.walletAddress 
+                    ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}`
+                    : `All ${tokenMetadata?.symbol || 'Token'} transfers`}
                 </p>
               </div>
-              </div>
+            </div>
 
             <div className="flex items-center gap-3 text-sm text-slate-600">
               <button
@@ -159,16 +166,7 @@ function TokenTracker() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isTracking && (
-          <div className="flex items-center justify-center mb-4">
-            <div className="inline-flex items-center gap-2 text-slate-600 text-sm">
-              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
-              <span>Tracking...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Token Information Card */}
+        {/* Loading skeleton for TokenInfoCard */}
         {isLoadingMetadata && (
           <div className="mb-8">
             <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden animate-pulse">
@@ -194,9 +192,20 @@ function TokenTracker() {
             </div>
           </div>
         )}
+
+        {/* Token Information Card */}
         {tokenMetadata && (
           <div className="mb-8">
             <TokenInfoCard tokenMetadata={tokenMetadata} />
+          </div>
+        )}
+
+        {isTracking && (
+          <div className="flex items-center justify-center mb-4">
+            <div className="inline-flex items-center gap-2 text-slate-600 text-sm">
+              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+              <span>Tracking...</span>
+            </div>
           </div>
         )}
 
@@ -209,9 +218,13 @@ function TokenTracker() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-slate-900 mb-2">Analysis Warning</h3>
-                  <p className="text-slate-700 mb-2">{error instanceof Error ? error.message : 'An issue occurred while fetching transfer data.'}</p>
+                  <p className="text-slate-700 mb-2">
+                    {error instanceof Error ? error.message : 'An issue occurred while fetching transfer data.'}
+                  </p>
                   {streamTransfers.length > 0 && (
-                    <p className="text-slate-600 text-sm">Streaming results are still coming in below.</p>
+                    <p className="text-slate-600 text-sm">
+                      Streaming results are still coming in below.
+                    </p>
                   )}
                 </div>
               </div>
@@ -229,25 +242,36 @@ function TokenTracker() {
                 {appState.walletAddress ? ` for wallet ${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : ''}
               </p>
             </div>
-            <TransferList transfers={combinedTransfers} tokenMetadata={tokenMetadata!} walletAddress={appState.walletAddress} />
+            <TransferList 
+              transfers={combinedTransfers} 
+              tokenMetadata={tokenMetadata!} 
+              walletAddress={appState.walletAddress}
+            />
           </div>
         )}
 
         {isLoading && combinedTransfers.length === 0 && (
-          <div className="text-center text-slate-600">Scanning blockchain for transfers...</div>
+          <div className="text-center text-slate-600">
+            Scanning blockchain for transfers...
+          </div>
         )}
       </div>
 
       {/* API Status Modal */}
-      <ApiStatusModal isOpen={showApiStatus} onClose={() => setShowApiStatus(false)} />
+      <ApiStatusModal 
+        isOpen={showApiStatus}
+        onClose={() => setShowApiStatus(false)}
+      />
     </div>
   );
 }
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TokenTracker />
-    </QueryClientProvider>
+    <Provider store={store}>
+      <QueryClientProvider client={queryClient}>
+        <TokenTracker />
+      </QueryClientProvider>
+    </Provider>
   );
 }

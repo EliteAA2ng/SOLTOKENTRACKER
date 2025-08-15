@@ -1,7 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Search, AlertTriangle, Info } from 'lucide-react';
-import { COMMON_TOKENS, DEFAULT_CONFIG } from '../config';
+import { COMMON_TOKENS } from '../config';
 import { WalletConnection } from './WalletConnection';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { 
+  setTokenMint, 
+  setWalletAddress, 
+  setHeliusKey, 
+  setSeconds 
+} from '../store/formSlice';
 
 interface WalletInputProps {
   onSubmit: (data: {
@@ -13,42 +20,16 @@ interface WalletInputProps {
   loading: boolean;
 }
 
-// Form persistence helper
-const FORM_STORAGE_KEY = 'solana-tracker-form';
-
-const saveFormData = (data: any) => {
-  try {
-    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
-  } catch (error) {
-    console.warn('Failed to save form data:', error);
-  }
-};
-
-const loadFormData = () => {
-  try {
-    const saved = localStorage.getItem(FORM_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : {};
-  } catch (error) {
-    console.warn('Failed to load form data:', error);
-    return {};
-  }
-};
-
 export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
-  const savedData = loadFormData();
+  // Get form state from Redux store
+  const dispatch = useAppDispatch();
+  const tokenMint = useAppSelector((state) => state.form.tokenMint);
+  const walletAddress = useAppSelector((state) => state.form.walletAddress);
+  const heliusKey = useAppSelector((state) => state.form.heliusKey);
+  const seconds = useAppSelector((state) => state.form.seconds);
   
-  const [tokenMint, setTokenMint] = useState(savedData.tokenMint || '');
-  const [walletAddress, setWalletAddress] = useState(savedData.walletAddress || '');
-  const [heliusKey, setHeliusKey] = useState(savedData.heliusKey || DEFAULT_CONFIG.defaultHeliusKey);
-  const [seconds, setSeconds] = useState(savedData.seconds || 600);
   const [error, setError] = useState('');
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
-
-  // Save form data whenever fields change
-  useEffect(() => {
-    const formData = { tokenMint, walletAddress, heliusKey, seconds };
-    saveFormData(formData);
-  }, [tokenMint, walletAddress, heliusKey, seconds]);
 
   const validateAddress = (addr: string): boolean => {
     if (!addr.trim()) return false;
@@ -84,23 +65,44 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
       return;
     }
 
-    // Use the provided heliusKey or fall back to default
-    const finalHeliusKey = heliusKey.trim() || DEFAULT_CONFIG.defaultHeliusKey;
-    onSubmit({ tokenMint: tokenMint.trim(), walletAddress: walletAddress.trim(), heliusKey: finalHeliusKey, seconds });
+    // Use the provided heliusKey
+    onSubmit({ 
+      tokenMint: tokenMint.trim(), 
+      walletAddress: walletAddress.trim(), 
+      heliusKey: heliusKey.trim(), 
+      seconds 
+    });
   };
 
   // Handle wallet selection with proper state management
   const handleWalletSelect = useCallback((address: string) => {
     setIsConnectingWallet(true);
-    setWalletAddress(address);
+    dispatch(setWalletAddress(address));
     // Reset the connecting state after a brief delay
     setTimeout(() => setIsConnectingWallet(false), 100);
-  }, []);
+  }, [dispatch]);
 
   // Handle token selection
   const handleTokenSelect = (address: string) => {
-    setTokenMint(address);
+    dispatch(setTokenMint(address));
     setError(''); // Clear any existing errors
+  };
+
+  // Handle input changes
+  const handleTokenMintChange = (value: string) => {
+    dispatch(setTokenMint(value));
+  };
+
+  const handleWalletAddressChange = (value: string) => {
+    dispatch(setWalletAddress(value));
+  };
+
+  const handleHeliusKeyChange = (value: string) => {
+    dispatch(setHeliusKey(value));
+  };
+
+  const handleSecondsChange = (value: number) => {
+    dispatch(setSeconds(value));
   };
 
   return (
@@ -132,7 +134,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               <input
                 type="text"
                 value={tokenMint}
-                onChange={(e) => setTokenMint(e.target.value)}
+                onChange={(e) => handleTokenMintChange(e.target.value)}
                 placeholder="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
                 className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
                 disabled={loading}
@@ -171,7 +173,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               <input
                 type="text"
                 value={walletAddress}
-                onChange={(e) => setWalletAddress(e.target.value)}
+                onChange={(e) => handleWalletAddressChange(e.target.value)}
                 placeholder="Filter by specific wallet address"
                 className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
                 disabled={loading || isConnectingWallet}
@@ -200,7 +202,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               <input
                 type="text"
                 value={heliusKey}
-                onChange={(e) => setHeliusKey(e.target.value)}
+                onChange={(e) => handleHeliusKeyChange(e.target.value)}
                 placeholder="Default key provided - enter your own for higher limits"
                 className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
                 disabled={loading}
@@ -237,7 +239,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setSeconds(value)}
+                  onClick={() => handleSecondsChange(value)}
                   className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                     seconds === value
                       ? 'bg-violet-100 text-violet-700 border border-violet-200'
@@ -253,7 +255,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               <input
                 type="number"
                 value={seconds}
-                onChange={(e) => setSeconds(parseInt(e.target.value) || 600)}
+                onChange={(e) => handleSecondsChange(parseInt(e.target.value) || 600)}
                 min="5"
                 max="86400"
                 className="w-full h-12 px-4 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all"
@@ -309,6 +311,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               <p>• Optional wallet filtering for specific addresses</p>
               <p>• Real-time streaming of new transfers</p>
               <p>• Comprehensive token information and market data</p>
+              <p>• Form state persists during your session</p>
             </div>
           </div>
         </div>
