@@ -16,6 +16,7 @@ import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
 import { ApiStatusModal } from './components/ApiStatusModal';
+import { AutoConnectWallet } from './components/AutoConnectWallet';
 import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
@@ -48,6 +49,9 @@ function TokenTracker() {
   const [isTracking, setIsTracking] = useState(false);
   const [showApiStatus, setShowApiStatus] = useState(false);
   const isStreaming = useRef(false);
+
+  // Auto-connect wallet component
+  const autoConnectComponent = <AutoConnectWallet />;
 
   const { data: tokenMetadata, isLoading: isLoadingMetadata } = useQuery({
     queryKey: ['tokenMetadata', appState?.tokenMint],
@@ -125,13 +129,20 @@ function TokenTracker() {
   };
 
   if (!appState) {
-    return <WalletInput onSubmit={handleAnalyze} loading={isLoading} />;
+    return (
+      <>
+        {autoConnectComponent}
+        <WalletInput onSubmit={handleAnalyze} loading={isLoading} />
+      </>
+    );
   }
 
   const combinedTransfers = (streamTransfers.length ? streamTransfers : []).concat(transfers || []);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <>
+      {autoConnectComponent}
+      <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -273,6 +284,7 @@ function TokenTracker() {
       {/* API Status Modal */}
       <ApiStatusModal isOpen={showApiStatus} onClose={() => setShowApiStatus(false)} />
     </div>
+    </>
   );
 }
 
@@ -296,7 +308,14 @@ export default function App() {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
+      <WalletProvider 
+        wallets={wallets} 
+        autoConnect={true}
+        onError={(error) => {
+          // Log wallet errors but don't show them to users unless critical
+          console.log('Wallet error:', error);
+        }}
+      >
         <WalletModalProvider>
           <QueryClientProvider client={queryClient}>
             <TokenTracker />
