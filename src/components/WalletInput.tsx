@@ -284,10 +284,18 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
                 <input
                   type="text"
                   value={walletAddress}
-                  onChange={(e) => handleManualWalletInput(e.target.value)}
-                  placeholder="Filter by specific wallet address"
-                  className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
-                  disabled={loading}
+                  onChange={(e) => handleManualWalletInput(e.target.value)} // Use manual input handler
+                  placeholder={
+                    walletAddressSource === 'connected' 
+                      ? 'Wallet address (from connected wallet)' 
+                      : 'Filter by specific wallet address'
+                  }
+                  className={`w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono ${
+                    walletAddressSource === 'connected' 
+                      ? 'bg-green-50 border-green-200 cursor-not-allowed' 
+                      : 'bg-white'
+                  }`}
+                  disabled={loading || walletAddressSource === 'connected'} // Disable when wallet is connected
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <div className={`w-2 h-2 rounded-full ${
@@ -305,8 +313,8 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
               />
             </div>
             <p className="text-xs text-slate-500">
-              {walletAddressSource === 'connected' 
-                ? '🟢 Connected wallet address (will update if wallet changes)'
+              {walletAddressSource === 'connected'
+                ? '🟢 Connected wallet address (input disabled - disconnect wallet to enable manual entry)'
                 : walletAddressSource === 'manual'
                 ? '🔵 Manually entered address (will be maintained)'
                 : 'Connect your wallet or manually enter an address to filter transfers'
