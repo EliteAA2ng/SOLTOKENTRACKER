@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Copy, ExternalLink } from 'lucide-react';
@@ -10,15 +10,21 @@ interface WalletConnectionProps {
 
 export function WalletConnection({ onWalletSelect, isAutoConnecting = false }: WalletConnectionProps) {
   const { publicKey, connected, disconnect, connecting } = useWallet();
+  const lastConnectedAddress = useRef<string | null>(null);
 
   // Update parent component when wallet connection changes
   useEffect(() => {
     if (connected && publicKey) {
       const address = publicKey.toString();
+      lastConnectedAddress.current = address;
       onWalletSelect(address);
-    } else if (!connected) {
+    } else if (!connected && lastConnectedAddress.current) {
+      // Only clear if we had a connected address before
+      // This prevents clearing manually typed addresses
+      lastConnectedAddress.current = null;
       onWalletSelect('');
     }
+    // If not connected and no previous connection, don't clear anything
   }, [connected, publicKey, onWalletSelect]);
 
   const copyAddress = async () => {

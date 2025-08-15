@@ -99,21 +99,33 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
     }
   }, [tokenMint, walletAddress, heliusKey, seconds, walletAddressSource, isFormInitialized]);
 
-  // Handle wallet connection - always update when wallet connects/disconnects
+  // Handle wallet connection - only update if not manually typing
   const handleWalletSelect = (address: string) => {
+    // If user is currently manually typing (manual source), don't override with wallet connection
+    // unless the address is empty (wallet disconnected)
+    if (walletAddressSource === 'manual' && address !== '') {
+      // Don't override manual input with wallet connection
+      return;
+    }
+    
     setWalletAddress(address);
+    // If wallet provides an address, it's connected; if empty, it's disconnected
     setWalletAddressSource(address ? 'connected' : null);
   };
 
   // Handle manual wallet address input
   const handleManualWalletInput = (address: string) => {
     setWalletAddress(address);
-    // If user is manually typing, mark as manual input
-    if (address.trim() !== '') {
-      setWalletAddressSource('manual');
-    } else {
-      setWalletAddressSource(null);
-    }
+    
+    // Debounce the source setting to prevent conflicts with wallet connection
+    setTimeout(() => {
+      // If user is manually typing, mark as manual input
+      if (address.trim() !== '') {
+        setWalletAddressSource('manual');
+      } else {
+        setWalletAddressSource(null);
+      }
+    }, 100); // Small delay to prevent race conditions
   };
 
   const validateAddress = (addr: string): boolean => {
