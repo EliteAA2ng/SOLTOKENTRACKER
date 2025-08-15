@@ -1,164 +1,178 @@
 import { useState, useEffect } from 'react';
 import { Wallet, X, Copy, ExternalLink } from 'lucide-react';
 
+interface WalletAdapter {
+  name: string;
+  icon: string;
+  adapter: any; // We use any here because wallet adapters have different interfaces
+}
+
 interface WalletConnectionProps {
   onWalletSelect: (address: string) => void;
   currentAddress?: string;
 }
 
 // Simple wallet detection without heavy dependencies
-const detectWallets = () => {
-  const wallets = [];
+const detectWallets = (): WalletAdapter[] => {
+  const wallets: WalletAdapter[] = [];
   
-  // Check for Phantom
-  if (typeof window !== 'undefined' && (window as any).phantom?.solana?.isPhantom) {
-    wallets.push({
-      name: 'Phantom',
-      icon: '👻',
-      adapter: (window as any).phantom.solana,
-    });
+  // Defensive check for window object
+  if (typeof window === 'undefined') {
+    return wallets;
   }
   
-  // Check for Solflare
-  if (typeof window !== 'undefined' && (window as any).solflare?.isSolflare) {
-    wallets.push({
-      name: 'Solflare',
-      icon: '🔥',
-      adapter: (window as any).solflare,
-    });
-  }
-  
-  // Check for Backpack
-  if (typeof window !== 'undefined' && (window as any).backpack?.isBackpack) {
-    wallets.push({
-      name: 'Backpack',
-      icon: '🎒',
-      adapter: (window as any).backpack,
-    });
-  }
-  
-  // Check for Glow
-  if (typeof window !== 'undefined' && (window as any).glow) {
-    wallets.push({
-      name: 'Glow',
-      icon: '✨',
-      adapter: (window as any).glow,
-    });
-  }
-
-  // Check for MetaMask with Solana support (Snaps or Flask)
-  if (typeof window !== 'undefined' && (window as any).ethereum?.isMetaMask) {
-    const ethereum = (window as any).ethereum;
-    // Check if MetaMask has Solana Snap installed or is Flask version
-    if (ethereum.isFlask || ethereum._metamask?.isUnlocked) {
+  try {
+    // Check for Phantom
+    if ((window as any).phantom?.solana?.isPhantom) {
       wallets.push({
-        name: 'MetaMask',
-        icon: '🦊',
-        adapter: {
-          connect: async () => {
-            try {
-              // Try to use Solana Snap if available
-              if (ethereum.request) {
-                // First, try to check if any Solana-related snaps are installed
-                try {
-                  const installedSnaps = await ethereum.request({
-                    method: 'wallet_getSnaps',
-                  });
-                  
-                  // Look for any Solana-related snaps
-                  const solanaSnaps = Object.keys(installedSnaps || {}).filter(snapId => 
-                    snapId.includes('solana') || snapId.includes('Solana')
-                  );
-                  
-                  if (solanaSnaps.length > 0) {
-                    // Try to get accounts from the first available Solana snap
-                    const accounts = await ethereum.request({
-                      method: 'wallet_invokeSnap',
-                      params: {
-                        snapId: solanaSnaps[0],
-                        request: { method: 'getAccounts' },
-                      },
-                    });
-                    
-                    if (accounts && accounts.length > 0) {
-                      return { publicKey: { toString: () => accounts[0] } };
-                    }
-                  }
-                  
-                  // If no Solana snaps are installed, try to install one
-                  // Note: This is a placeholder for when official Solana snaps are available
-                  throw new Error('No Solana Snap installed. Please install a Solana Snap from the MetaMask Snap directory.');
-                  
-                } catch (snapError) {
-                  // If Snap operations fail, provide helpful guidance
-                  throw new Error('MetaMask Solana Snap not available. Please use MetaMask Flask with a Solana Snap, or try a native Solana wallet like Phantom.');
-                }
-              }
-              
-              // Fallback: Show instructions for manual setup
-              throw new Error('Please install Solana Snap for MetaMask or use MetaMask Flask');
-            } catch (error) {
-              throw error;
-            }
-          },
-          publicKey: null,
-        },
+        name: 'Phantom',
+        icon: '👻',
+        adapter: (window as any).phantom.solana,
       });
     }
-  }
+    
+    // Check for Solflare
+    if ((window as any).solflare?.isSolflare) {
+      wallets.push({
+        name: 'Solflare',
+        icon: '🔥',
+        adapter: (window as any).solflare,
+      });
+    }
+    
+    // Check for Backpack
+    if ((window as any).backpack?.isBackpack) {
+      wallets.push({
+        name: 'Backpack',
+        icon: '🎒',
+        adapter: (window as any).backpack,
+      });
+    }
+    
+    // Check for Glow
+    if ((window as any).glow) {
+      wallets.push({
+        name: 'Glow',
+        icon: '✨',
+        adapter: (window as any).glow,
+      });
+    }
 
-  // Check for Coinbase Wallet (has Solana support)
-  if (typeof window !== 'undefined' && (window as any).coinbaseSolana) {
-    wallets.push({
-      name: 'Coinbase Wallet',
-      icon: '🔵',
-      adapter: (window as any).coinbaseSolana,
-    });
-  }
+    // Check for Coinbase Wallet (has Solana support)
+    if ((window as any).coinbaseSolana) {
+      wallets.push({
+        name: 'Coinbase Wallet',
+        icon: '🔵',
+        adapter: (window as any).coinbaseSolana,
+      });
+    }
 
-  // Check for Trust Wallet (has Solana support)
-  if (typeof window !== 'undefined' && (window as any).trustwallet?.solana) {
-    wallets.push({
-      name: 'Trust Wallet',
-      icon: '🛡️',
-      adapter: (window as any).trustwallet.solana,
-    });
-  }
+    // Check for Trust Wallet (has Solana support)
+    if ((window as any).trustwallet?.solana) {
+      wallets.push({
+        name: 'Trust Wallet',
+        icon: '🛡️',
+        adapter: (window as any).trustwallet.solana,
+      });
+    }
 
-  // Check for Slope Wallet
-  if (typeof window !== 'undefined' && (window as any).Slope) {
-    wallets.push({
-      name: 'Slope',
-      icon: '📈',
-      adapter: (window as any).Slope,
-    });
-  }
+    // Check for Slope Wallet
+    if ((window as any).Slope) {
+      wallets.push({
+        name: 'Slope',
+        icon: '📈',
+        adapter: (window as any).Slope,
+      });
+    }
 
-  // Check for Torus (Web3Auth)
-  if (typeof window !== 'undefined' && (window as any).torus?.solana) {
-    wallets.push({
-      name: 'Torus',
-      icon: '🔮',
-      adapter: (window as any).torus.solana,
-    });
-  }
+    // Check for Torus (Web3Auth)
+    if ((window as any).torus?.solana) {
+      wallets.push({
+        name: 'Torus',
+        icon: '🔮',
+        adapter: (window as any).torus.solana,
+      });
+    }
 
-  // Check for Clover Wallet
-  if (typeof window !== 'undefined' && (window as any).clover_solana) {
-    wallets.push({
-      name: 'Clover',
-      icon: '🍀',
-      adapter: (window as any).clover_solana,
-    });
-  }
+    // Check for Clover Wallet
+    if ((window as any).clover_solana) {
+      wallets.push({
+        name: 'Clover',
+        icon: '🍀',
+        adapter: (window as any).clover_solana,
+      });
+    }
 
-  // Check for Exodus (has Solana support)
-  if (typeof window !== 'undefined' && (window as any).exodus?.solana) {
-    wallets.push({
-      name: 'Exodus',
-      icon: '🚀',
-      adapter: (window as any).exodus.solana,
-    });
+    // Check for Exodus (has Solana support)
+    if ((window as any).exodus?.solana) {
+      wallets.push({
+        name: 'Exodus',
+        icon: '🚀',
+        adapter: (window as any).exodus.solana,
+      });
+    }
+
+    // Check for MetaMask with Solana support (Snaps or Flask)
+    if ((window as any).ethereum?.isMetaMask) {
+      const ethereum = (window as any).ethereum;
+      // Check if MetaMask has Solana Snap installed or is Flask version
+      if (ethereum.isFlask || ethereum._metamask?.isUnlocked) {
+        wallets.push({
+          name: 'MetaMask',
+          icon: '🦊',
+          adapter: {
+            connect: async () => {
+              try {
+                // Try to use Solana Snap if available
+                if (ethereum.request) {
+                  // First, try to check if any Solana-related snaps are installed
+                  try {
+                    const installedSnaps = await ethereum.request({
+                      method: 'wallet_getSnaps',
+                    });
+                    
+                    // Look for any Solana-related snaps
+                    const solanaSnaps = Object.keys(installedSnaps || {}).filter(snapId => 
+                      snapId.includes('solana') || snapId.includes('Solana')
+                    );
+                    
+                    if (solanaSnaps.length > 0) {
+                      // Try to get accounts from the first available Solana snap
+                      const accounts = await ethereum.request({
+                        method: 'wallet_invokeSnap',
+                        params: {
+                          snapId: solanaSnaps[0],
+                          request: { method: 'getAccounts' },
+                        },
+                      });
+                      
+                      if (accounts && accounts.length > 0) {
+                        return { publicKey: { toString: () => accounts[0] } };
+                      }
+                    }
+                    
+                    // If no Solana snaps are installed, throw specific error
+                    throw new Error('No Solana Snap installed. Please install a Solana Snap from the MetaMask Snap directory.');
+                    
+                  } catch (snapError) {
+                    // If Snap operations fail, provide helpful guidance
+                    throw new Error('MetaMask Solana Snap not available. Please use MetaMask Flask with a Solana Snap, or try a native Solana wallet like Phantom.');
+                  }
+                }
+                
+                // Fallback: Show instructions for manual setup
+                throw new Error('Please install Solana Snap for MetaMask or use MetaMask Flask');
+              } catch (error) {
+                throw error;
+              }
+            },
+            publicKey: null,
+          },
+        });
+      }
+    }
+  } catch (error) {
+    console.warn('Error detecting wallets:', error);
   }
 
   return wallets;
@@ -178,6 +192,8 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
     // Check if already connected
     if (currentAddress) {
       setConnected(currentAddress);
+    } else {
+      setConnected(null);
     }
   }, [currentAddress]);
 
@@ -186,6 +202,11 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
     try {
       const response = await wallet.adapter.connect();
       const publicKey = response.publicKey || wallet.adapter.publicKey;
+      
+      if (!publicKey) {
+        throw new Error('No public key returned from wallet');
+      }
+      
       const address = publicKey.toString();
       
       setConnected(address);
@@ -194,7 +215,7 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
     } catch (error) {
       console.error(`Failed to connect to ${wallet.name}:`, error);
       
-      // Provide specific error messages for MetaMask
+      // Provide specific error messages for different wallets
       if (wallet.name === 'MetaMask') {
         const errorMessage = error instanceof Error ? error.message : 'Connection failed';
         if (errorMessage.includes('Snap')) {
@@ -203,7 +224,8 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
           alert(`MetaMask doesn't fully support Solana yet.\n\n✅ Better options:\n• Phantom - Most popular Solana wallet\n• Solflare - Feature-rich Solana wallet\n• Backpack - Modern Solana wallet\n\nThese wallets are built specifically for Solana!`);
         }
       } else {
-        alert(`Failed to connect to ${wallet.name}.\n\nPlease make sure:\n• The wallet is unlocked\n• You approve the connection\n• Try refreshing the page`);
+        const errorMessage = error instanceof Error ? error.message : 'Connection failed';
+        alert(`Failed to connect to ${wallet.name}.\n\nError: ${errorMessage}\n\nPlease make sure:\n• The wallet is unlocked\n• You approve the connection\n• Try refreshing the page`);
       }
     } finally {
       setConnecting(null);
@@ -215,9 +237,22 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
     onWalletSelect('');
   };
 
-  const copyAddress = () => {
+  const copyAddress = async () => {
     if (connected) {
-      navigator.clipboard.writeText(connected);
+      try {
+        await navigator.clipboard.writeText(connected);
+        // Optional: Show a brief success message
+        console.log('Address copied to clipboard');
+      } catch (error) {
+        console.error('Failed to copy address:', error);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = connected;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
     }
   };
 
@@ -236,6 +271,7 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
             {connected.slice(0, 4)}...{connected.slice(-4)}
           </span>
           <button
+            type="button"
             onClick={copyAddress}
             className="p-1 hover:bg-green-100 rounded transition-colors"
             title="Copy address"
@@ -243,6 +279,7 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
             <Copy className="w-3 h-3 text-green-600" />
           </button>
           <button
+            type="button"
             onClick={openInExplorer}
             className="p-1 hover:bg-green-100 rounded transition-colors"
             title="View in explorer"
@@ -251,6 +288,7 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
           </button>
         </div>
         <button
+          type="button"
           onClick={disconnect}
           className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
         >
@@ -263,6 +301,7 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
   return (
     <>
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
         className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors"
       >
@@ -277,6 +316,7 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">Connect Wallet</h2>
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -291,7 +331,7 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
                   <Wallet className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No Solana wallets found</h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Install a Solana wallet or enable Solana support in MetaMask.
+                    Install a Solana wallet to get started.
                   </p>
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <a
@@ -363,6 +403,7 @@ export function WalletConnection({ onWalletSelect, currentAddress }: WalletConne
                   {wallets.map((wallet) => (
                     <button
                       key={wallet.name}
+                      type="button"
                       onClick={() => connectWallet(wallet)}
                       disabled={connecting === wallet.name}
                       className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:border-violet-300 hover:bg-violet-50 transition-colors disabled:opacity-50"

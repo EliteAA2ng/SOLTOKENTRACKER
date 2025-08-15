@@ -66,7 +66,8 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
       return;
     }
 
-    if (walletAddress && !validateAddress(walletAddress)) {
+    // Only validate wallet address if it's not empty (since it's optional)
+    if (walletAddress && walletAddress.trim() && !validateAddress(walletAddress.trim())) {
       setError('Invalid wallet address format. Expected 32-44 character base58 string.');
       return;
     }
@@ -78,7 +79,16 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
 
     // Use the provided heliusKey or fall back to default
     const finalHeliusKey = heliusKey.trim() || DEFAULT_CONFIG.defaultHeliusKey;
-    onSubmit({ tokenMint: tokenMint.trim(), walletAddress: walletAddress.trim(), heliusKey: finalHeliusKey, seconds });
+    
+    // Clean up wallet address - if it's empty or just whitespace, pass empty string
+    const cleanWalletAddress = walletAddress.trim() || '';
+    
+    onSubmit({ 
+      tokenMint: tokenMint.trim(), 
+      walletAddress: cleanWalletAddress, 
+      heliusKey: finalHeliusKey, 
+      seconds 
+    });
   };
 
   return (
