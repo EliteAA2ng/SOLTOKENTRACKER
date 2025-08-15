@@ -108,10 +108,26 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
     dispatch(setSeconds(value));
   };
 
-  // Determine validation states
-  const isTokenMintValid = tokenMint ? validateAddress(tokenMint) : null;
-  const isWalletAddressValid = walletAddress ? validateAddress(walletAddress) : null;
-  const isHeliusKeyValid = heliusKey ? validateHeliusKey(heliusKey) : null;
+  // Determine validation states - only show validation if field has content
+  const getTokenMintValidation = () => {
+    if (!tokenMint || tokenMint.trim() === '') return null; // Don't show any dot if empty
+    return validateAddress(tokenMint);
+  };
+
+  const getWalletAddressValidation = () => {
+    if (isWalletConnected) return true; // Always valid if connected
+    if (!walletAddress || walletAddress.trim() === '') return null; // Don't show any dot if empty
+    return validateAddress(walletAddress);
+  };
+
+  const getHeliusKeyValidation = () => {
+    if (!heliusKey || heliusKey.trim() === '') return true; // Empty is valid for optional field
+    return validateHeliusKey(heliusKey);
+  };
+
+  const isTokenMintValid = getTokenMintValidation();
+  const isWalletAddressValid = getWalletAddressValidation();
+  const isHeliusKeyValid = getHeliusKeyValidation();
   const isSecondsValid = validateSeconds(seconds);
 
   return (
@@ -177,13 +193,13 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 }`}
                 disabled={loading || isWalletConnected}
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className={`w-2 h-2 rounded-full ${
-                  isWalletConnected ? 'bg-green-500' : 
-                  isWalletAddressValid === null ? 'bg-slate-300' :
-                  isWalletAddressValid ? 'bg-green-500' : 'bg-red-500'
-                }`}></div>
-              </div>
+              {isWalletAddressValid !== null && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    isWalletAddressValid ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                </div>
+              )}
             </div>
             <p className="text-xs text-slate-500">
               {isWalletConnected 
@@ -206,12 +222,13 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
                 disabled={loading}
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className={`w-2 h-2 rounded-full ${
-                  isHeliusKeyValid === null ? 'bg-green-500' : // Empty is valid
-                  isHeliusKeyValid ? 'bg-green-500' : 'bg-red-500'
-                }`}></div>
-              </div>
+              {isHeliusKeyValid !== null && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    isHeliusKeyValid ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                </div>
+              )}
             </div>
             <p className="text-xs text-slate-500">
               Default key included. Get your own for higher rate limits at{' '}
@@ -263,11 +280,13 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all"
                 disabled={loading}
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className={`w-2 h-2 rounded-full ${
-                  isSecondsValid ? 'bg-green-500' : 'bg-red-500'
-                }`}></div>
-              </div>
+              {isSecondsValid !== null && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    isSecondsValid ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                </div>
+              )}
             </div>
             <p className="text-xs text-slate-500">
               How far back to look for transfers (5 seconds to 24 hours)
