@@ -61,7 +61,9 @@ export function WalletProvider({ children }: WalletProviderProps) {
         connected,
         connecting,
         hasAttemptedAutoConnect,
-        walletsLength: wallets.length
+        walletsLength: wallets.length,
+        phantomAvailable: !!(window as any).phantom?.solana?.isPhantom,
+        solflareAvailable: !!(window as any).solflare?.isSolflare
       });
 
       // Skip if already connected, connecting, or already attempted
@@ -74,7 +76,13 @@ export function WalletProvider({ children }: WalletProviderProps) {
         return;
       }
 
-      // Check if this is first visit
+      // Skip if no wallets available
+      if (wallets.length === 0) {
+        console.log('🔍 WalletContext: No wallets available yet, will retry');
+        return;
+      }
+
+      // Check if this is first visit (but don't mark as attempted yet)
       const sessionAttempted = sessionStorage.getItem('walletAutoConnectAttempted');
       if (sessionAttempted) {
         console.log('🔍 WalletContext: Session already attempted, skipping');
@@ -82,16 +90,11 @@ export function WalletProvider({ children }: WalletProviderProps) {
         return;
       }
 
-      // Skip if no wallets available
-      if (wallets.length === 0) {
-        console.log('🔍 WalletContext: No wallets available yet, will retry');
-        return;
-      }
-
       console.log('🚀 WalletContext: Starting auto-connect...');
       setIsAutoConnecting(true);
       setHasAttemptedAutoConnect(true);
-      sessionStorage.setItem('walletAutoConnectAttempted', 'true');
+
+      let connectionSuccessful = false;
 
       try {
         // Try to connect to previously connected wallet
@@ -101,14 +104,18 @@ export function WalletProvider({ children }: WalletProviderProps) {
           if (previousWallet) {
             console.log('🔄 WalletContext: Attempting to reconnect to', previousWalletName);
             select(previousWallet.adapter.name);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Increased wait time
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Increased wait time
             await connect();
             console.log('✅ WalletContext: Successfully reconnected to', previousWalletName);
+            connectionSuccessful = true;
             return;
           } else {
             console.log('⚠️ WalletContext: Previous wallet adapter not found:', previousWalletName);
           }
         }
+
+        // Wait a bit more for wallet extensions to fully load
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // Try Phantom if available
         if ((window as any).phantom?.solana?.isPhantom) {
@@ -118,9 +125,10 @@ export function WalletProvider({ children }: WalletProviderProps) {
           if (phantomWallet) {
             console.log('👻 WalletContext: Auto-connecting to Phantom...');
             select(phantomWallet.adapter.name);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 1500));
             await connect();
             console.log('✅ WalletContext: Successfully connected to Phantom');
+            connectionSuccessful = true;
             return;
           } else {
             console.log('⚠️ WalletContext: Phantom detected but adapter not found');
@@ -135,9 +143,10 @@ export function WalletProvider({ children }: WalletProviderProps) {
           if (solflareWallet) {
             console.log('🔥 WalletContext: Auto-connecting to Solflare...');
             select(solflareWallet.adapter.name);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 1500));
             await connect();
             console.log('✅ WalletContext: Successfully connected to Solflare');
+            connectionSuccessful = true;
             return;
           } else {
             console.log('⚠️ WalletContext: Solflare detected but adapter not found');
@@ -148,26 +157,41 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
       } catch (error) {
         console.log('⚠️ WalletContext: Auto-connect failed:', error);
-        setConnectionError('Auto-connect failed. You can connect manually.');
+        setConnectionError(`Auto-connect failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
         setIsAutoConnecting(false);
+        
+        // Only mark session as attempted if we actually tried to connect
+        // This allows retry on page refresh if auto-connect failed due to timing
+        if (connectionSuccessful) {
+          console.log('✅ WalletContext: Marking session as attempted after successful connection');
+          sessionStorage.setItem('walletAutoConnectAttempted', 'true');
+        } else {
+          console.log('⚠️ WalletContext: Auto-connect unsuccessful, not marking session (will retry on refresh)');
+        }
       }
     };
 
-    // Delay to ensure wallet adapters are loaded, with retry mechanism
-    const timer1 = setTimeout(attemptAutoConnect, 2000);
-    
-    // Retry if wallets weren't ready the first time
+    // Multiple retry attempts with increasing delays
+    const timer1 = setTimeout(attemptAutoConnect, 1000); // First attempt after 1s
     const timer2 = setTimeout(() => {
-      if (!connected && !hasAttemptedAutoConnect && wallets.length > 0) {
-        console.log('🔄 WalletContext: Retrying auto-connect...');
+      if (!connected && !hasAttemptedAutoConnect) {
+        console.log('🔄 WalletContext: First retry attempt...');
         attemptAutoConnect();
       }
-    }, 5000);
+    }, 3000); // Second attempt after 3s
+    
+    const timer3 = setTimeout(() => {
+      if (!connected && !hasAttemptedAutoConnect) {
+        console.log('🔄 WalletContext: Final retry attempt...');
+        attemptAutoConnect();
+      }
+    }, 6000); // Final attempt after 6s
     
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
+      clearTimeout(timer3);
     };
   }, [wallets, select, connect, connected, connecting, hasAttemptedAutoConnect]);
 

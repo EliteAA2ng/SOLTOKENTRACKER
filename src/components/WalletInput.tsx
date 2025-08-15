@@ -368,6 +368,8 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                   <div>Input Disabled: {isInputDisabled() ? '✅ Yes' : '❌ No'}</div>
                   <div>Session Attempted: {sessionStorage.getItem('walletAutoConnectAttempted') || 'No'}</div>
                   <div>Stored Wallet: {localStorage.getItem('connectedWalletName') || 'None'}</div>
+                  <div>Phantom Detected: {(window as any).phantom?.solana?.isPhantom ? '✅ Yes' : '❌ No'}</div>
+                  <div>Solflare Detected: {(window as any).solflare?.isSolflare ? '✅ Yes' : '❌ No'}</div>
                   {connectionError && <div className="text-red-600">Error: {connectionError}</div>}
                 </div>
                 <div className="mt-3 flex gap-2">
@@ -393,12 +395,25 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                         manualAddress,
                         connectionError,
                         sessionStorage: sessionStorage.getItem('walletAutoConnectAttempted'),
-                        localStorage: localStorage.getItem('connectedWalletName')
+                        localStorage: localStorage.getItem('connectedWalletName'),
+                        phantomAvailable: !!(window as any).phantom?.solana?.isPhantom,
+                        solflareAvailable: !!(window as any).solflare?.isSolflare
                       });
                     }}
                     className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
                   >
                     Log State to Console
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sessionStorage.removeItem('walletAutoConnectAttempted');
+                      console.log('🔄 Debug: Cleared session flag, refreshing to retry auto-connect...');
+                      setTimeout(() => window.location.reload(), 100);
+                    }}
+                    className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs hover:bg-orange-200"
+                  >
+                    Force Retry Auto-Connect
                   </button>
                 </div>
               </div>
