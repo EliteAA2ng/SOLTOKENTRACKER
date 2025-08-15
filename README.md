@@ -92,7 +92,9 @@ The app fetches comprehensive token information from multiple reliable sources:
 - **Jupiter Token List**: Comprehensive token registry with names, symbols, and logos
 - **CoinGecko API**: Market data, price information, and social media links  
 - **DexScreener API**: Real-time price data, market cap, and trading volumes
-- **Birdeye API** (Optional Premium): Enhanced market data, liquidity metrics, and token analytics (paid subscription required)
+- **Birdeye API** (Optional): Enhanced market data, liquidity metrics, and token analytics
+  - **Free Tier Available**: 30,000 compute units/month, 1 RPS limit
+  - **Paid Plans**: Higher limits and WebSocket access for real-time data
 
 All data is fetched in parallel for optimal performance, with graceful fallbacks if any source is unavailable.
 
@@ -156,11 +158,18 @@ If you see "Birdeye API failed" in the API Status Check, this is usually due to 
 4. **CORS Issues**: Browser security may block direct API calls
 
 **Solutions:**
-1. **Get a Paid Birdeye API Key**: 
-   - Visit [Birdeye API](https://docs.birdeye.so/) to purchase an API subscription
-   - Set it as environment variable: `VITE_BIRDEYE_API_KEY=your-paid-key-here`
+1. **Get a Free Birdeye API Key**: 
+   - Visit [Birdeye Data Services](https://bds.birdeye.so/) and click "TRY FOR FREE"
+   - Sign up for the free Standard plan (30,000 CUs/month, 1 RPS)
+   - Get your API key from the dashboard
+   - Set it as environment variable: `VITE_BIRDEYE_API_KEY=your-free-key-here`
 
-2. **Skip Birdeye (Recommended)**: 
+2. **Upgrade for Higher Limits**: 
+   - Free tier: 30,000 CUs/month, 1 RPS
+   - Starter plan: $99/month, 3M CUs/month, 15 RPS
+   - Premium+ plan: $250/month, 15M CUs/month, 50 RPS + WebSocket
+
+3. **Skip Birdeye (Still Works Great)**: 
    - The app works perfectly with just Jupiter, CoinGecko, and DexScreener
    - Birdeye is an optional enhancement, not required for core functionality
 
