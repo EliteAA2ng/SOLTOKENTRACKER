@@ -54,25 +54,40 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
 
   // Check if auto-connect should be attempted
   useEffect(() => {
-    const hasAttempted = sessionStorage.getItem('autoConnectAttempted');
-    if (!hasAttempted && !connected) {
+    const sessionAttempted = sessionStorage.getItem('autoConnectAttempted');
+    
+    // Show auto-connecting status if:
+    // 1. No session attempt has been made yet
+    // 2. Not currently connected
+    // 3. Not already showing auto-connecting
+    if (!sessionAttempted && !connected && !isAutoConnecting) {
+      console.log('🔄 WalletInput: Starting auto-connect status display');
       setIsAutoConnecting(true);
-      // Set a timeout to hide auto-connecting status after reasonable time
-      const timeout = setTimeout(() => {
-        setIsAutoConnecting(false);
-      }, 5000); // Hide after 5 seconds regardless
       
-      return () => clearTimeout(timeout);
+      // Fallback timeout to ensure status doesn't stick
+      const fallbackTimeout = setTimeout(() => {
+        console.log('⏰ WalletInput: Auto-connect timeout reached, hiding status');
+        setIsAutoConnecting(false);
+      }, 6000); // 6 seconds fallback
+      
+      return () => clearTimeout(fallbackTimeout);
     }
-  }, [connected]);
+  }, [connected, isAutoConnecting]);
 
-  // Hide auto-connecting status when wallet connects or when auto-connect attempt is marked as completed
+  // Hide auto-connecting status when conditions are met
   useEffect(() => {
-    const hasAttempted = sessionStorage.getItem('autoConnectAttempted');
-    if (hasAttempted || connected) {
-      setIsAutoConnecting(false);
+    const sessionAttempted = sessionStorage.getItem('autoConnectAttempted');
+    
+    // Hide auto-connecting status if:
+    // 1. Wallet is now connected, OR
+    // 2. Auto-connect attempt has been completed (marked in session)
+    if (connected || sessionAttempted) {
+      if (isAutoConnecting) {
+        console.log('✅ WalletInput: Hiding auto-connect status -', { connected, sessionAttempted });
+        setIsAutoConnecting(false);
+      }
     }
-  }, [connected]);
+  }, [connected, isAutoConnecting]);
 
   // Initialize form with saved data on component mount
   useEffect(() => {
@@ -106,13 +121,18 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
 
   // Handle wallet connection/disconnection
   useEffect(() => {
+    console.log('🔄 WalletInput: Wallet state changed -', { connected, publicKey: !!publicKey });
+    
     if (connected && publicKey) {
       // Wallet connected - set address and disable input
       const address = publicKey.toString();
+      console.log('✅ WalletInput: Wallet connected, setting address:', address.slice(0, 8) + '...');
       setWalletAddress(address);
       setWalletAddressSource('connected');
+      setIsAutoConnecting(false); // Ensure auto-connecting status is hidden
     } else if (!connected && walletAddressSource === 'connected') {
       // Wallet disconnected - clear address and enable input
+      console.log('❌ WalletInput: Wallet disconnected, clearing connected address');
       setWalletAddress('');
       setWalletAddressSource(null);
     }
@@ -208,6 +228,30 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
             <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
               <div className="w-4 h-4 text-green-600">✓</div>
               <span>Previous form data restored</span>
+            </div>
+          )}
+
+          {/* Debug section for development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs">
+              <div className="font-medium text-gray-700 mb-2">Debug Info:</div>
+              <div className="space-y-1 text-gray-600">
+                <div>Connected: {connected ? '✅ Yes' : '❌ No'}</div>
+                <div>Auto-connecting: {isAutoConnecting ? '🔄 Yes' : '❌ No'}</div>
+                <div>Session attempted: {sessionStorage.getItem('autoConnectAttempted') || 'No'}</div>
+                <div>Address source: {walletAddressSource || 'None'}</div>
+                {publicKey && <div>Wallet: {publicKey.toString().slice(0, 8)}...</div>}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sessionStorage.removeItem('autoConnectAttempted');
+                    window.location.reload();
+                  }}
+                  className="mt-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                >
+                  Reset & Test Auto-Connect
+                </button>
+              </div>
             </div>
           )}
         </div>
