@@ -32,14 +32,22 @@ export async function checkApiStatus(): Promise<ApiStatus[]> {
     },
     {
       name: 'Birdeye',
-      url: 'https://public-api.birdeye.so/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=50',
+      url: 'https://public-api.birdeye.so/public/price?address=So11111111111111111111111111111111111111112',
       testFn: async () => {
-        const response = await fetch('https://public-api.birdeye.so/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=50', {
+        // Try a simpler endpoint first without API key
+        const response = await fetch('https://public-api.birdeye.so/public/price?address=So11111111111111111111111111111111111111112');
+        if (response.ok) {
+          return true;
+        }
+        
+        // If that fails, try with demo key
+        const responseWithKey = await fetch('https://public-api.birdeye.so/public/price?address=So11111111111111111111111111111111111111112', {
           headers: {
-            'X-API-KEY': 'demo' // Using demo key for status check
+            'X-API-KEY': 'demo'
           }
         });
-        return response.ok;
+        
+        return responseWithKey.ok;
       }
     }
   ];
@@ -50,7 +58,7 @@ export async function checkApiStatus(): Promise<ApiStatus[]> {
     try {
       const result = await Promise.race([
         api.testFn(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000)) // Increased timeout for Birdeye
       ]) as any;
 
       if (typeof result === 'boolean') {
@@ -80,6 +88,9 @@ export async function checkApiStatus(): Promise<ApiStatus[]> {
         } else if (error.message.includes('401') || error.message.includes('403')) {
           status = 'auth-required';
           message = 'Authentication required';
+        } else if (error.message.includes('cors') || error.message.includes('CORS')) {
+          status = 'failed';
+          message = 'CORS blocked - use server proxy';
         }
       }
       

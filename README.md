@@ -141,21 +141,49 @@ The app includes quick-select buttons for popular tokens:
 
 ## Troubleshooting
 
-### No Results Found
-- Verify the token mint address is correct
-- Try a longer lookback period (30-60 minutes)
-- Ensure the token has recent transfer activity
-- Check that your Helius API key is valid
+### API Issues
 
-### Rate Limiting
-- The app includes automatic delays between requests
-- Helius accounts have higher rate limits than public RPC
-- Try reducing the lookback period if you hit limits
+#### Birdeye API Failed
+If you see "Birdeye API failed" in the API Status Check, this is usually due to one of these reasons:
 
-### Performance Issues
-- Use shorter lookback periods (5-10 minutes) for faster results
-- For token-wide analysis, consider filtering by a specific wallet
-- Ensure you're using a valid Helius API key
+**Common Causes:**
+1. **Authentication Required**: Birdeye API requires a valid API key for most endpoints
+2. **Rate Limiting**: Demo keys have very limited requests per minute
+3. **CORS Issues**: Browser security may block direct API calls
+4. **Network/Firewall**: Corporate firewalls may block certain endpoints
+
+**Solutions:**
+1. **Get a Birdeye API Key**: 
+   - Visit [Birdeye API](https://docs.birdeye.so/) to get your own API key
+   - Set it as environment variable: `VITE_BIRDEYE_API_KEY=your-key-here`
+
+2. **Use VPN/Different Network**: 
+   - Try accessing from a different network
+   - Some regions may have API restrictions
+
+3. **Alternative Data Sources**: 
+   - The app works fine with just Jupiter, CoinGecko, and DexScreener
+   - Birdeye is an additional enhancement, not required
+
+**Note**: Even if Birdeye fails, you'll still get comprehensive token data from the other 3 APIs.
+
+### Other Common Issues
+
+If you encounter issues with token tracking:
+
+1. **No Transfers Found**: 
+   - Try increasing the lookback period
+   - Check if the token address is correct
+   - Some tokens may have very low trading activity
+
+2. **Slow Performance**: 
+   - Reduce the lookback period to 1-10 minutes for faster results
+   - Get a Helius API key for better performance
+
+3. **Network Errors**: 
+   - Check your internet connection
+   - Try refreshing the page
+   - Some corporate networks may block blockchain APIs
 
 ## API Limits
 

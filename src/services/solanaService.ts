@@ -186,47 +186,84 @@ export class SolanaService {
       // Get Birdeye API key from environment or use demo key
       const apiKey = (import.meta as any).env?.VITE_BIRDEYE_API_KEY || 'demo';
       
-      const response = await fetch(
+      // Try multiple Birdeye endpoints for better success rate
+      const endpoints = [
         `https://public-api.birdeye.so/defi/token_overview?address=${mintAddress}`,
-        {
-          headers: {
-            'X-API-KEY': apiKey,
-            'Accept': 'application/json'
-          }
-        }
-      );
+        `https://public-api.birdeye.so/public/price?address=${mintAddress}`,
+        `https://public-api.birdeye.so/defi/price?address=${mintAddress}`
+      ];
       
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.success && data.data) {
-          const tokenData = data.data;
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            headers: {
+              'X-API-KEY': apiKey,
+              'Accept': 'application/json'
+            }
+          });
           
-          // Basic token info
-          metadata.name = tokenData.name || metadata.name;
-          metadata.symbol = tokenData.symbol || metadata.symbol;
-          metadata.logoURI = tokenData.logoURI || metadata.logoURI;
-          
-          // Market data
-          metadata.price = tokenData.price || metadata.price;
-          metadata.priceChange24h = tokenData.priceChange24h || metadata.priceChange24h;
-          metadata.marketCap = tokenData.mc || metadata.marketCap;
-          metadata.volume24h = tokenData.v24h || metadata.volume24h;
-          
-          // Additional data from Birdeye
-          if (tokenData.liquidity) {
-            metadata.liquidity = tokenData.liquidity;
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Handle token_overview response
+            if (data.success && data.data) {
+              const tokenData = data.data;
+              
+              // Basic token info
+              metadata.name = tokenData.name || metadata.name;
+              metadata.symbol = tokenData.symbol || metadata.symbol;
+              metadata.logoURI = tokenData.logoURI || metadata.logoURI;
+              
+              // Market data
+              metadata.price = tokenData.price || metadata.price;
+              metadata.priceChange24h = tokenData.priceChange24h || metadata.priceChange24h;
+              metadata.marketCap = tokenData.mc || metadata.marketCap;
+              metadata.volume24h = tokenData.v24h || metadata.volume24h;
+              
+              // Additional data from Birdeye
+              if (tokenData.liquidity) {
+                metadata.liquidity = tokenData.liquidity;
+              }
+              
+              console.log('✅ Birdeye token_overview data fetched successfully');
+              return; // Success, exit the loop
+            }
+            
+            // Handle simple price response
+            if (data.data && data.data.value) {
+              metadata.price = data.data.value || metadata.price;
+              console.log('✅ Birdeye price data fetched successfully');
+              return; // Success, exit the loop
+            }
+            
+            // Handle direct price response (some endpoints return price directly)
+            if (typeof data === 'number' || (data.price && typeof data.price === 'number')) {
+              metadata.price = typeof data === 'number' ? data : data.price;
+              console.log('✅ Birdeye direct price data fetched successfully');
+              return; // Success, exit the loop
+            }
+          } else if (response.status === 429) {
+            console.warn('Birdeye API rate limited - trying next endpoint');
+            continue; // Try next endpoint
+          } else if (response.status === 401 || response.status === 403) {
+            console.warn('Birdeye API authentication required - trying next endpoint');
+            continue; // Try next endpoint
+          } else if (response.status === 404) {
+            console.warn('Token not found on Birdeye - trying next endpoint');
+            continue; // Try next endpoint
+          } else {
+            console.warn(`Birdeye API error ${response.status} - trying next endpoint`);
+            continue; // Try next endpoint
           }
+        } catch (endpointError) {
+          console.warn(`Birdeye endpoint ${endpoint} failed:`, endpointError);
+          continue; // Try next endpoint
         }
-      } else if (response.status === 429) {
-        console.warn('Birdeye API rate limited - skipping market data');
-      } else if (response.status === 401 || response.status === 403) {
-        console.warn('Birdeye API authentication required - using demo key limitations');
-      } else if (response.status === 404) {
-        console.warn('Token not found on Birdeye - this is normal for newer tokens');
-      } else {
-        console.warn(`Birdeye API error ${response.status} - skipping market data`);
       }
+      
+      // If all endpoints failed
+      console.warn('All Birdeye endpoints failed - skipping Birdeye data');
+      
     } catch (error) {
       console.warn('Failed to fetch token metadata from Birdeye:', error);
       // Birdeye API is optional - continue without it
