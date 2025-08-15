@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Wallet, X, Copy, ExternalLink, CheckCircle } from 'lucide-react';
+import { useAppSelector } from '../store/hooks';
 
 interface WalletConnectionProps {
   onWalletSelect: (address: string) => void;
@@ -171,7 +172,9 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
   const [wallets, setWallets] = useState<any[]>([]);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
+  
+  // Get wallet connection state from Redux
+  const isWalletConnected = useAppSelector((state) => state.form.isWalletConnected);
 
   useEffect(() => {
     // Detect available wallets
@@ -198,7 +201,6 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
         throw new Error('Invalid wallet address received');
       }
       
-      setConnectedWallet(address); // Track that this is a wallet connection
       onWalletSelect(address);
       setIsOpen(false);
       
@@ -232,7 +234,6 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
   };
 
   const disconnect = () => {
-    setConnectedWallet(null);
     onWalletSelect('');
     setError(null);
     
@@ -250,8 +251,8 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
   };
 
   const copyAddress = () => {
-    if (connectedWallet) {
-      navigator.clipboard.writeText(connectedWallet);
+    if (currentAddress) {
+      navigator.clipboard.writeText(currentAddress);
       // Show a brief notification
       const notification = document.createElement('div');
       notification.textContent = 'Address copied!';
@@ -262,8 +263,8 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
   };
 
   const openInExplorer = () => {
-    if (connectedWallet) {
-      window.open(`https://explorer.solana.com/address/${connectedWallet}`, '_blank');
+    if (currentAddress) {
+      window.open(`https://explorer.solana.com/address/${currentAddress}`, '_blank');
     }
   };
 
@@ -278,14 +279,14 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
     setError(null);
   };
 
-  // Only show connected state if actually connected via wallet, not manual input
-  if (connectedWallet && currentAddress === connectedWallet && !isManualInput) {
+  // Show connected state if wallet is connected (from Redux) and not manual input
+  if (isWalletConnected && currentAddress && !isManualInput) {
     return (
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
           <CheckCircle className="w-4 h-4 text-green-500" />
           <span className="text-sm font-medium text-green-700">
-            {connectedWallet.slice(0, 4)}...{connectedWallet.slice(-4)}
+            {currentAddress.slice(0, 4)}...{currentAddress.slice(-4)}
           </span>
           <button
             type="button"
