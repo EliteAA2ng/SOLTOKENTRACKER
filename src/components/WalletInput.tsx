@@ -207,26 +207,39 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
           {/* Debug: Auto-connect trigger (only in development) */}
           {process.env.NODE_ENV === 'development' && (
             <div className="mt-4 space-y-2">
-              <button
-                type="button"
-                onClick={() => {
-                  console.log('🔄 Manual reset triggered');
-                  console.log('Before reset:', {
-                    sessionStorage: sessionStorage.getItem('walletAutoConnectAttempted'),
-                    localStorage: localStorage.getItem('walletName')
-                  });
-                  sessionStorage.removeItem('walletAutoConnectAttempted');
-                  localStorage.removeItem('walletName');
-                  console.log('🧹 Cleared session and local storage');
-                  setTimeout(() => {
-                    console.log('🔄 Reloading page...');
-                    window.location.reload();
-                  }, 500);
-                }}
-                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded"
-              >
-                🔄 Reset & Test Auto-Connect
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('🔄 Manual reset triggered');
+                    console.log('Before reset:', {
+                      sessionStorage: sessionStorage.getItem('walletAutoConnectAttempted'),
+                      localStorage: localStorage.getItem('walletName')
+                    });
+                    sessionStorage.removeItem('walletAutoConnectAttempted');
+                    localStorage.removeItem('walletName');
+                    console.log('🧹 Cleared session and local storage');
+                    setTimeout(() => {
+                      console.log('🔄 Reloading page...');
+                      window.location.reload();
+                    }, 500);
+                  }}
+                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded"
+                >
+                  🔄 Reset & Test Auto-Connect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('🚀 Manual auto-connect trigger');
+                    // Trigger a custom event that AutoConnectWallet can listen to
+                    window.dispatchEvent(new CustomEvent('forceAutoConnect'));
+                  }}
+                  className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded"
+                >
+                  🚀 Force Auto-Connect Now
+                </button>
+              </div>
               <div className="text-xs text-gray-500">
                 Session: {sessionStorage.getItem('walletAutoConnectAttempted') || 'not set'} | 
                 Wallet: {localStorage.getItem('walletName') || 'none'}
