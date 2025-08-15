@@ -43,12 +43,60 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
   const [heliusKey, setHeliusKey] = useState(savedData.heliusKey || DEFAULT_CONFIG.defaultHeliusKey);
   const [seconds, setSeconds] = useState(savedData.seconds || 600);
   const [error, setError] = useState('');
+  const [isFormInitialized, setIsFormInitialized] = useState(false);
+  const [showRestoredMessage, setShowRestoredMessage] = useState(false);
 
-  // Save form data whenever fields change
+  // Initialize form with saved data on component mount
   useEffect(() => {
-    const formData = { tokenMint, walletAddress, heliusKey, seconds };
-    saveFormData(formData);
-  }, [tokenMint, walletAddress, heliusKey, seconds]);
+    const saved = loadFormData();
+    let hasRestoredData = false;
+    
+    if (saved.tokenMint) {
+      setTokenMint(saved.tokenMint);
+      hasRestoredData = true;
+    }
+    if (saved.walletAddress) {
+      setWalletAddress(saved.walletAddress);
+      hasRestoredData = true;
+    }
+    if (saved.heliusKey && saved.heliusKey !== DEFAULT_CONFIG.defaultHeliusKey) {
+      setHeliusKey(saved.heliusKey);
+      hasRestoredData = true;
+    }
+    if (saved.seconds && saved.seconds !== 600) {
+      setSeconds(saved.seconds);
+      hasRestoredData = true;
+    }
+    
+    setIsFormInitialized(true);
+    
+    // Show restored message if we restored any data
+    if (hasRestoredData) {
+      setShowRestoredMessage(true);
+      // Hide the message after 3 seconds
+      setTimeout(() => setShowRestoredMessage(false), 3000);
+    }
+  }, []);
+
+  // Save form data whenever fields change (but only after initialization)
+  useEffect(() => {
+    if (isFormInitialized) {
+      const formData = { tokenMint, walletAddress, heliusKey, seconds };
+      saveFormData(formData);
+    }
+  }, [tokenMint, walletAddress, heliusKey, seconds, isFormInitialized]);
+
+  // Handle wallet connection - only update if no saved address exists
+  const handleWalletSelect = (address: string) => {
+    // Only update wallet address from connection if:
+    // 1. No saved address exists, OR
+    // 2. The saved address is empty, OR  
+    // 3. User explicitly connected a different wallet
+    const savedAddress = loadFormData().walletAddress;
+    if (!savedAddress || savedAddress.trim() === '' || address !== savedAddress) {
+      setWalletAddress(address);
+    }
+  };
 
   const validateAddress = (addr: string): boolean => {
     if (!addr.trim()) return false;
@@ -116,6 +164,14 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
               <span>Auto-connecting to wallet...</span>
             </div>
           )}
+          
+          {/* Form data restored indicator */}
+          {showRestoredMessage && (
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+              <div className="w-4 h-4 text-green-600">✓</div>
+              <span>Previous form data restored</span>
+            </div>
+          )}
         </div>
 
         {/* Form */}
@@ -177,7 +233,7 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
                 </div>
               </div>
               <WalletConnection 
-                onWalletSelect={setWalletAddress}
+                onWalletSelect={handleWalletSelect}
                 isAutoConnecting={isAutoConnecting}
               />
             </div>
