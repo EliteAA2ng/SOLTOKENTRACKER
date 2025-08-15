@@ -1,11 +1,14 @@
 import { TokenMetadata } from '../types';
 import { ExternalLink, TrendingUp, TrendingDown } from 'lucide-react';
+import { useState } from 'react';
 
 interface TokenInfoCardProps {
   tokenMetadata: TokenMetadata;
 }
 
 export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
+  const [logoError, setLogoError] = useState(false);
+
   const formatPrice = (price: number | null | undefined) => {
     if (!price) return 'N/A';
     if (price < 0.01) return `$${price.toFixed(6)}`;
@@ -52,10 +55,19 @@ export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-50 to-slate-100 p-6 border-b border-slate-200">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
-            <span className="text-2xl font-bold text-slate-600">
-              {tokenMetadata.symbol?.charAt(0) || '?'}
-            </span>
+          <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center overflow-hidden">
+            {tokenMetadata.logoURI && !logoError ? (
+              <img 
+                src={tokenMetadata.logoURI} 
+                alt={`${tokenMetadata.symbol} logo`}
+                className="w-16 h-16 rounded-full object-cover"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <span className="text-2xl font-bold text-slate-600">
+                {tokenMetadata.symbol?.charAt(0) || '?'}
+              </span>
+            )}
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-slate-900 mb-1">
