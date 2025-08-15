@@ -6,7 +6,8 @@ A modern React web application that tracks transfers for any Solana SPL token wi
 
 - 🔍 **Token-Agnostic**: Track transfers for any Solana SPL token by mint address
 - 📊 **Comprehensive Token Info**: Displays token name, symbol, current price, market cap, volume, and social links
-- 💰 **Multi-Source Data**: Fetches token data from CoinGecko, DexScreener, Jupiter, and Birdeye
+- 💰 **Multi-Source Data**: Fetches token data from CoinGecko, DexScreener, and Jupiter
+- 💰 **Optional Premium Data**: Birdeye API integration available with paid subscription (contact sales for pricing)
 - 💸 **Transfer Detection**: Finds both outgoing and incoming transfers with detailed analytics
 - ⚡ **Fast Performance**: Optimized with shorter lookback periods (seconds to minutes)
 - 🎨 **Modern UI**: Clean, responsive design with real-time loading states and animations
@@ -80,16 +81,18 @@ echo "VITE_HELIUS_API_KEY=your-key-here" > .env.local
 
 The app fetches comprehensive token information from multiple reliable sources:
 
-### Token Metadata & Pricing
-- **CoinGecko API**: Market data, prices, descriptions, social links, and rankings
-- **DexScreener**: Real-time price data, market cap, and trading volumes
-- **Jupiter Token List**: Token names, symbols, and logos
-- **Birdeye API**: Additional market data, liquidity metrics, and token analytics
-
 ### Blockchain Data
-- **Helius RPC**: Enhanced Solana RPC with indexed transaction search
-- **Standard Solana RPC**: Fallback for basic blockchain queries
-- **Block Scanning**: Direct blockchain analysis for comprehensive transfer detection
+
+- **Helius RPC**: Enhanced Solana RPC with better rate limits and additional endpoints
+- **Standard Solana RPC**: Fallback for transaction and account data
+- **Block Explorer APIs**: Additional transaction parsing capabilities
+
+### Token Data Sources
+
+- **Jupiter Token List**: Comprehensive token registry with names, symbols, and logos
+- **CoinGecko API**: Market data, price information, and social media links  
+- **DexScreener API**: Real-time price data, market cap, and trading volumes
+- **Birdeye API** (Optional Premium): Enhanced market data, liquidity metrics, and token analytics (paid subscription required)
 
 All data is fetched in parallel for optimal performance, with graceful fallbacks if any source is unavailable.
 
