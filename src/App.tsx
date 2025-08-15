@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
@@ -12,11 +12,11 @@ import {
   MathWalletAdapter,
   TorusWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
+import { WalletProvider } from './contexts/WalletContext';
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
 import { ApiStatusModal } from './components/ApiStatusModal';
-import { AutoConnectWallet } from './components/AutoConnectWallet';
 import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
@@ -146,7 +146,6 @@ function TokenTracker() {
   if (!appState) {
     return (
       <>
-        <AutoConnectWallet />
         <WalletInput 
           onSubmit={handleAnalyze} 
           loading={isLoading}
@@ -159,7 +158,6 @@ function TokenTracker() {
 
   return (
     <>
-      <AutoConnectWallet />
       <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
@@ -326,7 +324,7 @@ export default function App() {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider 
+      <SolanaWalletProvider 
         wallets={wallets} 
         autoConnect={false}
         onError={(error) => {
@@ -335,11 +333,13 @@ export default function App() {
         }}
       >
         <WalletModalProvider>
-          <QueryClientProvider client={queryClient}>
-            <TokenTracker />
-          </QueryClientProvider>
+          <WalletProvider>
+            <QueryClientProvider client={queryClient}>
+              <TokenTracker />
+            </QueryClientProvider>
+          </WalletProvider>
         </WalletModalProvider>
-      </WalletProvider>
+      </SolanaWalletProvider>
     </ConnectionProvider>
   );
 }
