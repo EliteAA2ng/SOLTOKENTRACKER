@@ -7,7 +7,8 @@ import {
   setTokenMint, 
   setWalletAddress, 
   setHeliusKey, 
-  setSeconds 
+  setSeconds,
+  setIsWalletConnected 
 } from '../store/formSlice';
 
 interface WalletInputProps {
@@ -27,6 +28,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   const walletAddress = useAppSelector((state) => state.form.walletAddress);
   const heliusKey = useAppSelector((state) => state.form.heliusKey);
   const seconds = useAppSelector((state) => state.form.seconds);
+  const isWalletConnected = useAppSelector((state) => state.form.isWalletConnected);
   
   const [error, setError] = useState('');
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
@@ -78,6 +80,11 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   const handleWalletSelect = useCallback((address: string) => {
     setIsConnectingWallet(true);
     dispatch(setWalletAddress(address));
+    if (address) {
+      dispatch(setIsWalletConnected(true));
+    } else {
+      dispatch(setIsWalletConnected(false));
+    }
     // Reset the connecting state after a brief delay
     setTimeout(() => setIsConnectingWallet(false), 100);
   }, [dispatch]);
@@ -95,6 +102,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
 
   const handleWalletAddressChange = (value: string) => {
     dispatch(setWalletAddress(value));
+    dispatch(setIsWalletConnected(false)); // Mark as manual input
   };
 
   const handleHeliusKeyChange = (value: string) => {
@@ -175,21 +183,28 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 value={walletAddress}
                 onChange={(e) => handleWalletAddressChange(e.target.value)}
                 placeholder="Filter by specific wallet address"
-                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
-                disabled={loading || isConnectingWallet}
+                className={`w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono ${
+                  isWalletConnected ? 'bg-slate-50 cursor-not-allowed' : ''
+                }`}
+                disabled={loading || isConnectingWallet || isWalletConnected}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+                <div className={`w-2 h-2 rounded-full ${
+                  isWalletConnected ? 'bg-green-400' : 'bg-slate-300'
+                }`}></div>
               </div>
               </div>
               <WalletConnection 
                 onWalletSelect={handleWalletSelect}
                 currentAddress={walletAddress}
                 disabled={loading}
+                isManualInput={!isWalletConnected}
               />
             </div>
             <p className="text-xs text-slate-500">
-              Connect your wallet or manually enter an address to filter transfers
+              {isWalletConnected 
+                ? 'Wallet connected. Disconnect to enter address manually.'
+                : 'Connect your wallet or manually enter an address to filter transfers'}
             </p>
           </div>
 

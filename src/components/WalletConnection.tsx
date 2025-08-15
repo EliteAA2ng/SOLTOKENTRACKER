@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Wallet, X, Copy, ExternalLink, CheckCircle } from 'lucide-react';
-import { useAppSelector } from '../store/hooks';
 
 interface WalletConnectionProps {
   onWalletSelect: (address: string) => void;
   currentAddress?: string;
   disabled?: boolean;
+  isManualInput?: boolean; // Add prop to distinguish manual input
 }
 
 // Simple wallet detection without heavy dependencies
@@ -166,15 +166,12 @@ const detectWallets = () => {
   return wallets;
 };
 
-export function WalletConnection({ onWalletSelect, currentAddress, disabled = false }: WalletConnectionProps) {
+export function WalletConnection({ onWalletSelect, currentAddress, disabled = false, isManualInput = false }: WalletConnectionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [wallets, setWallets] = useState<any[]>([]);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
-  // Get wallet address from Redux store to sync with auto-connect
-  const reduxWalletAddress = useAppSelector((state) => state.form.walletAddress);
-  const connected = currentAddress || reduxWalletAddress || null;
+  const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
 
   useEffect(() => {
     // Detect available wallets
@@ -201,6 +198,7 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
         throw new Error('Invalid wallet address received');
       }
       
+      setConnectedWallet(address); // Track that this is a wallet connection
       onWalletSelect(address);
       setIsOpen(false);
       
@@ -234,6 +232,7 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
   };
 
   const disconnect = () => {
+    setConnectedWallet(null);
     onWalletSelect('');
     setError(null);
     
@@ -251,8 +250,8 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
   };
 
   const copyAddress = () => {
-    if (connected) {
-      navigator.clipboard.writeText(connected);
+    if (connectedWallet) {
+      navigator.clipboard.writeText(connectedWallet);
       // Show a brief notification
       const notification = document.createElement('div');
       notification.textContent = 'Address copied!';
@@ -263,8 +262,8 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
   };
 
   const openInExplorer = () => {
-    if (connected) {
-      window.open(`https://explorer.solana.com/address/${connected}`, '_blank');
+    if (connectedWallet) {
+      window.open(`https://explorer.solana.com/address/${connectedWallet}`, '_blank');
     }
   };
 
@@ -279,13 +278,14 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
     setError(null);
   };
 
-  if (connected) {
+  // Only show connected state if actually connected via wallet, not manual input
+  if (connectedWallet && currentAddress === connectedWallet && !isManualInput) {
     return (
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
           <CheckCircle className="w-4 h-4 text-green-500" />
           <span className="text-sm font-medium text-green-700">
-            {connected.slice(0, 4)}...{connected.slice(-4)}
+            {connectedWallet.slice(0, 4)}...{connectedWallet.slice(-4)}
           </span>
           <button
             type="button"

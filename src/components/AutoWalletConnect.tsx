@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../store/hooks';
-import { setWalletAddress } from '../store/formSlice';
+import { setWalletAddress, setIsWalletConnected } from '../store/formSlice';
 
 export function AutoWalletConnect() {
   const dispatch = useAppDispatch();
@@ -32,6 +32,7 @@ export function AutoWalletConnect() {
               if (publicKey) {
                 const address = publicKey.toString();
                 dispatch(setWalletAddress(address));
+                dispatch(setIsWalletConnected(true));
                 console.log('Auto-connected to Phantom wallet:', address);
                 return;
               }
@@ -56,6 +57,7 @@ export function AutoWalletConnect() {
               if (publicKey) {
                 const address = publicKey.toString();
                 dispatch(setWalletAddress(address));
+                dispatch(setIsWalletConnected(true));
                 console.log('Auto-connected to Solflare wallet:', address);
                 return;
               }
@@ -79,6 +81,7 @@ export function AutoWalletConnect() {
               if (publicKey) {
                 const address = publicKey.toString();
                 dispatch(setWalletAddress(address));
+                dispatch(setIsWalletConnected(true));
                 console.log('Auto-connected to Backpack wallet:', address);
                 return;
               }
@@ -110,6 +113,7 @@ export function AutoWalletConnect() {
               if (publicKey) {
                 const address = publicKey.toString();
                 dispatch(setWalletAddress(address));
+                dispatch(setIsWalletConnected(true));
                 console.log(`Auto-connected to ${name} wallet:`, address);
                 return;
               }
