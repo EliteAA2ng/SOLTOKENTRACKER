@@ -14,8 +14,21 @@ export function AutoConnectWallet({ onConnectingChange }: AutoConnectWalletProps
 
   useEffect(() => {
     const autoConnect = async () => {
+      console.log('🔍 Auto-connect check:', {
+        isFirstVisit,
+        hasAttemptedAutoConnect,
+        connected,
+        connecting,
+        walletsAvailable: wallets.length
+      });
+
       // Only auto-connect on first visit and if not already attempted
       if (!isFirstVisit || hasAttemptedAutoConnect || connected || connecting) {
+        console.log('⏭️ Skipping auto-connect:', {
+          reason: !isFirstVisit ? 'not first visit' : 
+                  hasAttemptedAutoConnect ? 'already attempted' :
+                  connected ? 'already connected' : 'currently connecting'
+        });
         return;
       }
 

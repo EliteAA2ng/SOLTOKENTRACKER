@@ -99,12 +99,12 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
     }
   }, [tokenMint, walletAddress, heliusKey, seconds, walletAddressSource, isFormInitialized]);
 
-  // Handle wallet connection - only update if not manually typing
+  // Handle wallet connection - allow auto-connect during initialization
   const handleWalletSelect = (address: string) => {
-    // If user is currently manually typing (manual source), don't override with wallet connection
-    // unless the address is empty (wallet disconnected)
-    if (walletAddressSource === 'manual' && address !== '') {
-      // Don't override manual input with wallet connection
+    // During form initialization, allow wallet connection to override any saved state
+    // After initialization, only override if not manually typing
+    if (isFormInitialized && walletAddressSource === 'manual' && address !== '') {
+      // Don't override manual input with wallet connection (unless during initialization)
       return;
     }
     
@@ -201,6 +201,22 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
             <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
               <div className="w-4 h-4 text-green-600">✓</div>
               <span>Previous form data restored</span>
+            </div>
+          )}
+          
+          {/* Debug: Auto-connect trigger (only in development) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.removeItem('walletAutoConnectAttempted');
+                  window.location.reload();
+                }}
+                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded"
+              >
+                🔄 Reset & Test Auto-Connect
+              </button>
             </div>
           )}
         </div>
