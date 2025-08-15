@@ -183,8 +183,14 @@ export class SolanaService {
 
   private async fetchBirdeyeMetadata(mintAddress: string, metadata: TokenMetadata): Promise<void> {
     try {
-      // Get Birdeye API key from environment or use demo key
-      const apiKey = (import.meta as any).env?.VITE_BIRDEYE_API_KEY || 'demo';
+      // Only use Birdeye if user provides their own API key (not demo)
+      const apiKey = (import.meta as any).env?.VITE_BIRDEYE_API_KEY;
+      
+      // Skip Birdeye if no API key or using demo key
+      if (!apiKey || apiKey === 'demo') {
+        console.log('⏭️ Skipping Birdeye API - no valid API key provided');
+        return;
+      }
       
       // Try multiple Birdeye endpoints for better success rate
       const endpoints = [
@@ -246,8 +252,8 @@ export class SolanaService {
             console.warn('Birdeye API rate limited - trying next endpoint');
             continue; // Try next endpoint
           } else if (response.status === 401 || response.status === 403) {
-            console.warn('Birdeye API authentication required - trying next endpoint');
-            continue; // Try next endpoint
+            console.warn('Birdeye API authentication failed - invalid API key');
+            return; // Don't try other endpoints if auth fails
           } else if (response.status === 404) {
             console.warn('Token not found on Birdeye - trying next endpoint');
             continue; // Try next endpoint
@@ -262,7 +268,7 @@ export class SolanaService {
       }
       
       // If all endpoints failed
-      console.warn('All Birdeye endpoints failed - skipping Birdeye data');
+      console.warn('All Birdeye endpoints failed - user needs valid API key');
       
     } catch (error) {
       console.warn('Failed to fetch token metadata from Birdeye:', error);

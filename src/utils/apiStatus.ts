@@ -34,20 +34,47 @@ export async function checkApiStatus(): Promise<ApiStatus[]> {
       name: 'Birdeye',
       url: 'https://public-api.birdeye.so/public/price?address=So11111111111111111111111111111111111111112',
       testFn: async () => {
-        // Try a simpler endpoint first without API key
-        const response = await fetch('https://public-api.birdeye.so/public/price?address=So11111111111111111111111111111111111111112');
-        if (response.ok) {
-          return true;
+        // Check if user has provided their own API key
+        const apiKey = (import.meta as any).env?.VITE_BIRDEYE_API_KEY;
+        
+        if (!apiKey || apiKey === 'demo') {
+          // Return a special status for missing API key
+          return {
+            status: 'auth-required',
+            message: 'API key required - set VITE_BIRDEYE_API_KEY'
+          };
         }
         
-        // If that fails, try with demo key
-        const responseWithKey = await fetch('https://public-api.birdeye.so/public/price?address=So11111111111111111111111111111111111111112', {
-          headers: {
-            'X-API-KEY': 'demo'
+        // Try with user's API key
+        try {
+          const response = await fetch('https://public-api.birdeye.so/defi/price?address=So11111111111111111111111111111111111111112', {
+            headers: {
+              'X-API-KEY': apiKey,
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            return true;
+          } else if (response.status === 401 || response.status === 403) {
+            return {
+              status: 'auth-required',
+              message: 'Invalid API key'
+            };
+          } else if (response.status === 429) {
+            return {
+              status: 'rate-limited',
+              message: 'Rate limited'
+            };
+          } else {
+            return {
+              status: 'failed',
+              message: `HTTP ${response.status}`
+            };
           }
-        });
-        
-        return responseWithKey.ok;
+        } catch (error) {
+          return false;
+        }
       }
     }
   ];

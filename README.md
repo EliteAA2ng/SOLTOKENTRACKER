@@ -147,25 +147,26 @@ The app includes quick-select buttons for popular tokens:
 If you see "Birdeye API failed" in the API Status Check, this is usually due to one of these reasons:
 
 **Common Causes:**
-1. **Authentication Required**: Birdeye API requires a valid API key for most endpoints
-2. **Rate Limiting**: Demo keys have very limited requests per minute
-3. **CORS Issues**: Browser security may block direct API calls
-4. **Network/Firewall**: Corporate firewalls may block certain endpoints
+1. **API Key Required**: Birdeye API requires a **paid** API key - there is no free tier
+2. **Demo Key Limitations**: The "demo" key has severe restrictions and often fails
+3. **Invalid API Key**: Your API key may be expired or invalid
+4. **CORS Issues**: Browser security may block direct API calls
 
 **Solutions:**
-1. **Get a Birdeye API Key**: 
-   - Visit [Birdeye API](https://docs.birdeye.so/) to get your own API key
-   - Set it as environment variable: `VITE_BIRDEYE_API_KEY=your-key-here`
+1. **Get a Paid Birdeye API Key**: 
+   - Visit [Birdeye API](https://docs.birdeye.so/) to purchase an API subscription
+   - Set it as environment variable: `VITE_BIRDEYE_API_KEY=your-paid-key-here`
 
-2. **Use VPN/Different Network**: 
-   - Try accessing from a different network
-   - Some regions may have API restrictions
+2. **Skip Birdeye (Recommended)**: 
+   - The app works perfectly with just Jupiter, CoinGecko, and DexScreener
+   - Birdeye is an optional enhancement, not required for core functionality
 
 3. **Alternative Data Sources**: 
-   - The app works fine with just Jupiter, CoinGecko, and DexScreener
-   - Birdeye is an additional enhancement, not required
+   - **Jupiter**: Token names, symbols, logos (✅ Free)
+   - **CoinGecko**: Market data, prices, social links (✅ Free with limits)
+   - **DexScreener**: Real-time prices, trading volumes (✅ Free)
 
-**Note**: Even if Birdeye fails, you'll still get comprehensive token data from the other 3 APIs.
+**Important**: Unlike other APIs, Birdeye has **NO free endpoints**. All endpoints require a paid subscription.
 
 ### Other Common Issues
 
