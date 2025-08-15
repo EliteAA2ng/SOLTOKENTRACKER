@@ -48,10 +48,15 @@ function TokenTracker() {
   const [streamStart, setStreamStart] = useState<number | null>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [showApiStatus, setShowApiStatus] = useState(false);
+  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
   const isStreaming = useRef(false);
 
-  // Auto-connect wallet component
-  const autoConnectComponent = <AutoConnectWallet />;
+  // Auto-connect wallet component with state management
+  const autoConnectComponent = (
+    <AutoConnectWallet 
+      onConnectingChange={setIsAutoConnecting}
+    />
+  );
 
   const { data: tokenMetadata, isLoading: isLoadingMetadata } = useQuery({
     queryKey: ['tokenMetadata', appState?.tokenMint],
@@ -132,7 +137,11 @@ function TokenTracker() {
     return (
       <>
         {autoConnectComponent}
-        <WalletInput onSubmit={handleAnalyze} loading={isLoading} />
+        <WalletInput 
+          onSubmit={handleAnalyze} 
+          loading={isLoading}
+          isAutoConnecting={isAutoConnecting}
+        />
       </>
     );
   }

@@ -5,10 +5,11 @@ import { Copy, ExternalLink } from 'lucide-react';
 
 interface WalletConnectionProps {
   onWalletSelect: (address: string) => void;
+  isAutoConnecting?: boolean;
 }
 
-export function WalletConnection({ onWalletSelect }: WalletConnectionProps) {
-  const { publicKey, connected, disconnect } = useWallet();
+export function WalletConnection({ onWalletSelect, isAutoConnecting = false }: WalletConnectionProps) {
+  const { publicKey, connected, disconnect, connecting } = useWallet();
 
   // Update parent component when wallet connection changes
   useEffect(() => {
@@ -83,18 +84,39 @@ export function WalletConnection({ onWalletSelect }: WalletConnectionProps) {
     );
   }
 
+  // Show connecting status during auto-connect or manual connect
+  const isConnecting = connecting || isAutoConnecting;
+
   return (
     <div className="wallet-adapter-button-trigger">
-      <WalletMultiButton 
-        style={{
-          backgroundColor: '#7c3aed',
-          borderRadius: '0.5rem',
-          height: '3rem',
-          fontSize: '0.875rem',
-          fontWeight: '500',
-          padding: '0 1rem',
-        }}
-      />
+      {isConnecting ? (
+        <button
+          type="button"
+          disabled
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-400 text-white rounded-lg font-medium cursor-not-allowed"
+          style={{
+            borderRadius: '0.5rem',
+            height: '3rem',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            padding: '0 1rem',
+          }}
+        >
+          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+          {isAutoConnecting ? 'Auto-connecting...' : 'Connecting...'}
+        </button>
+      ) : (
+        <WalletMultiButton 
+          style={{
+            backgroundColor: '#7c3aed',
+            borderRadius: '0.5rem',
+            height: '3rem',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            padding: '0 1rem',
+          }}
+        />
+      )}
     </div>
   );
 } 

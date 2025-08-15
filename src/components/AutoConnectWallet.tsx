@@ -1,17 +1,32 @@
 import { useEffect, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 
-export function AutoConnectWallet() {
+interface AutoConnectWalletProps {
+  onConnectingChange?: (isConnecting: boolean) => void;
+}
+
+export function AutoConnectWallet({ onConnectingChange }: AutoConnectWalletProps) {
   const { wallet, wallets, select, connect, connected, connecting } = useWallet();
-  const [hasTriedAutoConnect, setHasTriedAutoConnect] = useState(false);
+  const [hasAttemptedAutoConnect, setHasAttemptedAutoConnect] = useState(false);
+
+  // Check if this is the first visit in this session
+  const isFirstVisit = !sessionStorage.getItem('walletAutoConnectAttempted');
 
   useEffect(() => {
     const autoConnect = async () => {
-      // Skip if already tried, connected, or connecting
-      if (hasTriedAutoConnect || connected || connecting) return;
+      // Only auto-connect on first visit and if not already attempted
+      if (!isFirstVisit || hasAttemptedAutoConnect || connected || connecting) {
+        return;
+      }
 
-      console.log('🔄 Attempting automatic wallet connection...');
-      setHasTriedAutoConnect(true);
+      // Mark that we've attempted auto-connect for this session
+      sessionStorage.setItem('walletAutoConnectAttempted', 'true');
+      setHasAttemptedAutoConnect(true);
+      
+      // Notify parent component that we're connecting
+      onConnectingChange?.(true);
+
+      console.log('🔄 First visit detected - attempting automatic wallet connection...');
 
       try {
         // Strategy 1: Try to connect to a previously connected wallet
@@ -83,27 +98,13 @@ export function AutoConnectWallet() {
           }
         }
 
-        // Strategy 4: Try the first available wallet adapter
-        if (wallets.length > 0) {
-          console.log('🎯 Trying first available wallet adapter...');
-          const firstWallet = wallets[0];
-          select(firstWallet.adapter.name);
-          
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          try {
-            await connect();
-            console.log(`✅ Successfully auto-connected to ${firstWallet.adapter.name}`);
-            return;
-          } catch (error) {
-            console.log(`⚠️ ${firstWallet.adapter.name} connection failed:`, error);
-          }
-        }
-
-        console.log('❌ All auto-connect strategies failed - user will need to connect manually');
+        console.log('❌ Auto-connect failed - user will need to connect manually');
 
       } catch (error) {
         console.log('❌ Auto-connect error:', error);
+      } finally {
+        // Always reset connecting state
+        onConnectingChange?.(false);
       }
     };
 
@@ -111,7 +112,7 @@ export function AutoConnectWallet() {
     const timer = setTimeout(autoConnect, 1500);
     
     return () => clearTimeout(timer);
-  }, [wallet, wallets, select, connect, connected, connecting, hasTriedAutoConnect]);
+  }, [wallet, wallets, select, connect, connected, connecting, hasAttemptedAutoConnect, isFirstVisit, onConnectingChange]);
 
   // Store wallet name when successfully connected for future auto-connect
   useEffect(() => {
@@ -121,12 +122,12 @@ export function AutoConnectWallet() {
     }
   }, [connected, wallet]);
 
-  // Reset auto-connect attempt when wallet changes
-  useEffect(() => {
-    if (wallet) {
-      setHasTriedAutoConnect(false);
-    }
-  }, [wallet]);
+  // Return connecting state for parent components to use
+  return null;
+}
 
-  return null; // This component doesn't render anything
+// Export the connecting state for other components to use
+export function useAutoConnectState() {
+  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
+  return { isAutoConnecting, setIsAutoConnecting };
 } 

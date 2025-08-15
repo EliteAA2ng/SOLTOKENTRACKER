@@ -11,6 +11,7 @@ interface WalletInputProps {
     seconds: number;
   }) => void;
   loading: boolean;
+  isAutoConnecting?: boolean;
 }
 
 // Form persistence helper
@@ -34,7 +35,7 @@ const loadFormData = () => {
   }
 };
 
-export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
+export default function WalletInput({ onSubmit, loading, isAutoConnecting = false }: WalletInputProps) {
   const savedData = loadFormData();
   
   const [tokenMint, setTokenMint] = useState(savedData.tokenMint || '');
@@ -107,6 +108,14 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
           <p className="text-slate-600 text-sm leading-relaxed">
             Comprehensive on-chain analysis for any Solana SPL token transfers
           </p>
+          
+          {/* Auto-connecting indicator */}
+          {isAutoConnecting && (
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+              <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+              <span>Auto-connecting to wallet...</span>
+            </div>
+          )}
         </div>
 
         {/* Form */}
@@ -169,6 +178,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               </div>
               <WalletConnection 
                 onWalletSelect={setWalletAddress}
+                isAutoConnecting={isAutoConnecting}
               />
             </div>
             <p className="text-xs text-slate-500">
