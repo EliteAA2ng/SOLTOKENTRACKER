@@ -34,11 +34,8 @@ export function Header() {
             </div>
             <div>
               <h1 className="text-lg font-semibold text-slate-900">
-                Solana Token Tracker
+                Token Tracker
               </h1>
-              <p className="text-xs text-slate-600">
-                Track your token transfers on Solana blockchain
-              </p>
             </div>
           </div>
 
