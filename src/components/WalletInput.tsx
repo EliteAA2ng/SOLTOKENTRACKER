@@ -117,20 +117,15 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
             <label className="text-sm font-medium text-slate-700 block">
               Token Mint Address <span className="text-red-500">*</span>
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={tokenMint}
-                onChange={(e) => handleTokenMintChange(e.target.value)}
-                placeholder="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
-                disabled={loading}
-                required
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-              </div>
-            </div>
+            <input
+              type="text"
+              value={tokenMint}
+              onChange={(e) => handleTokenMintChange(e.target.value)}
+              placeholder="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+              className="w-full h-12 px-4 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
+              disabled={loading}
+              required
+            />
             <p className="text-xs text-slate-500">
               Enter any Solana SPL token mint address (e.g., USDC, BONK, USDT)
             </p>
