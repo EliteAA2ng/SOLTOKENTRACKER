@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from '@solana/wallet-adapter-react';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
@@ -16,7 +16,7 @@ import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
 import { ApiStatusModal } from './components/ApiStatusModal';
-import { WalletProvider } from './contexts/WalletContext';
+import { AutoConnectWallet } from './components/AutoConnectWallet';
 import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
@@ -49,7 +49,15 @@ function TokenTracker() {
   const [streamStart, setStreamStart] = useState<number | null>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [showApiStatus, setShowApiStatus] = useState(false);
+  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
   const isStreaming = useRef(false);
+
+  // Auto-connect wallet component with state management
+  const autoConnectComponent = (
+    <AutoConnectWallet 
+      onConnectingChange={setIsAutoConnecting}
+    />
+  );
 
   const { data: tokenMetadata, isLoading: isLoadingMetadata } = useQuery({
     queryKey: ['tokenMetadata', appState?.tokenMint],
@@ -121,19 +129,20 @@ function TokenTracker() {
   };
 
   const handleReset = () => {
-    // Save current appState to sessionStorage before resetting (session-only persistence)
+    // Save current appState to sessionStorage only for navigation back (not persistent)
     if (appState) {
       const formData = {
         tokenMint: appState.tokenMint,
         walletAddress: appState.walletAddress || '',
         heliusKey: appState.heliusKey,
         seconds: appState.seconds,
-        walletAddressSource: appState.walletAddressSource // Save source
+        walletAddressSource: appState.walletAddressSource
       };
       try {
-        sessionStorage.setItem('solana-tracker-form', JSON.stringify(formData));
+        // Use sessionStorage with temp key - only for this navigation back
+        sessionStorage.setItem('temp-form-data', JSON.stringify(formData));
       } catch (error) {
-        console.warn('Failed to save form data to sessionStorage before reset:', error);
+        console.warn('Failed to save temporary form data:', error);
       }
     }
     setAppState(null);
@@ -146,9 +155,11 @@ function TokenTracker() {
   if (!appState) {
     return (
       <>
+        {autoConnectComponent}
         <WalletInput 
           onSubmit={handleAnalyze} 
           loading={isLoading}
+          isAutoConnecting={isAutoConnecting}
         />
       </>
     );
@@ -158,7 +169,8 @@ function TokenTracker() {
 
   return (
     <>
-    <div className="min-h-screen bg-slate-50">
+      {autoConnectComponent}
+      <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -178,12 +190,12 @@ function TokenTracker() {
                 </h1>
                 <p className="text-sm text-slate-600">
                   {appState.walletAddress 
-                    ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}`
+                    ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` 
                     : `All ${tokenMetadata?.symbol || 'Token'} transfers`
                   }
                 </p>
               </div>
-              </div>
+            </div>
 
             <div className="flex items-center gap-3 text-sm text-slate-600">
               <button
@@ -284,11 +296,11 @@ function TokenTracker() {
                 }
               </p>
             </div>
-          <TransferList 
+            <TransferList 
               transfers={combinedTransfers} 
               tokenMetadata={tokenMetadata!} 
-            walletAddress={appState.walletAddress}
-          />
+              walletAddress={appState.walletAddress} 
+            />
           </div>
         )}
 
@@ -324,7 +336,7 @@ export default function App() {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <SolanaWalletProvider 
+      <WalletProvider 
         wallets={wallets} 
         autoConnect={false}
         onError={(error) => {
@@ -333,13 +345,11 @@ export default function App() {
         }}
       >
         <WalletModalProvider>
-          <WalletProvider>
-            <QueryClientProvider client={queryClient}>
-              <TokenTracker />
-            </QueryClientProvider>
-          </WalletProvider>
+          <QueryClientProvider client={queryClient}>
+            <TokenTracker />
+          </QueryClientProvider>
         </WalletModalProvider>
-      </SolanaWalletProvider>
+      </WalletProvider>
     </ConnectionProvider>
   );
 }
