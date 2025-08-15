@@ -5,6 +5,7 @@ import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
 import { ApiStatusModal } from './components/ApiStatusModal';
+import { AutoWalletConnect } from './components/AutoWalletConnect';
 import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
@@ -112,7 +113,12 @@ function TokenTracker() {
   };
 
   if (!appState) {
-    return <WalletInput onSubmit={handleAnalyze} loading={isLoading} />;
+    return (
+      <>
+        <AutoWalletConnect />
+        <WalletInput onSubmit={handleAnalyze} loading={isLoading} />
+      </>
+    );
   }
 
   const combinedTransfers = (streamTransfers.length ? streamTransfers : []).concat(transfers || []);

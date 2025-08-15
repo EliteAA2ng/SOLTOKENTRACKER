@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Wallet, X, Copy, ExternalLink } from 'lucide-react';
+import { Wallet, X, Copy, ExternalLink, CheckCircle } from 'lucide-react';
+import { useAppSelector } from '../store/hooks';
 
 interface WalletConnectionProps {
   onWalletSelect: (address: string) => void;
   currentAddress?: string;
-  disabled?: boolean; // Add disabled prop for better control
+  disabled?: boolean;
 }
 
 // Simple wallet detection without heavy dependencies
@@ -169,19 +170,17 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
   const [isOpen, setIsOpen] = useState(false);
   const [wallets, setWallets] = useState<any[]>([]);
   const [connecting, setConnecting] = useState<string | null>(null);
-  const [connected, setConnected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get wallet address from Redux store to sync with auto-connect
+  const reduxWalletAddress = useAppSelector((state) => state.form.walletAddress);
+  const connected = currentAddress || reduxWalletAddress || null;
 
   useEffect(() => {
     // Detect available wallets
     const availableWallets = detectWallets();
     setWallets(availableWallets);
-    
-    // Check if already connected
-    if (currentAddress) {
-      setConnected(currentAddress);
-    }
-  }, [currentAddress]);
+  }, []);
 
   const connectWallet = async (wallet: any) => {
     setConnecting(wallet.name);
@@ -202,7 +201,6 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
         throw new Error('Invalid wallet address received');
       }
       
-      setConnected(address);
       onWalletSelect(address);
       setIsOpen(false);
       
@@ -236,9 +234,20 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
   };
 
   const disconnect = () => {
-    setConnected(null);
     onWalletSelect('');
     setError(null);
+    
+    // Try to disconnect from wallets
+    try {
+      if ((window as any).phantom?.solana?.disconnect) {
+        (window as any).phantom.solana.disconnect();
+      }
+      if ((window as any).solflare?.disconnect) {
+        (window as any).solflare.disconnect();
+      }
+    } catch (error) {
+      console.log('Error disconnecting wallet:', error);
+    }
   };
 
   const copyAddress = () => {
@@ -274,7 +283,7 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
     return (
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <CheckCircle className="w-4 h-4 text-green-500" />
           <span className="text-sm font-medium text-green-700">
             {connected.slice(0, 4)}...{connected.slice(-4)}
           </span>
@@ -325,7 +334,7 @@ export function WalletConnection({ onWalletSelect, currentAddress, disabled = fa
           onClick={handleCloseModal}
         >
           <div 
-            className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
