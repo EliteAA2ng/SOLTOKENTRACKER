@@ -12,11 +12,11 @@ import {
   MathWalletAdapter,
   TorusWalletAdapter,
 } from '@solana/wallet-adapter-wallets';
-import { WalletProvider } from './contexts/WalletContext';
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
 import { ApiStatusModal } from './components/ApiStatusModal';
+import { WalletProvider } from './contexts/WalletContext';
 import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
@@ -158,7 +158,7 @@ function TokenTracker() {
 
   return (
     <>
-      <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -178,12 +178,12 @@ function TokenTracker() {
                 </h1>
                 <p className="text-sm text-slate-600">
                   {appState.walletAddress 
-                    ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` 
+                    ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}`
                     : `All ${tokenMetadata?.symbol || 'Token'} transfers`
                   }
                 </p>
               </div>
-            </div>
+              </div>
 
             <div className="flex items-center gap-3 text-sm text-slate-600">
               <button
@@ -284,11 +284,11 @@ function TokenTracker() {
                 }
               </p>
             </div>
-            <TransferList 
+          <TransferList 
               transfers={combinedTransfers} 
               tokenMetadata={tokenMetadata!} 
-              walletAddress={appState.walletAddress} 
-            />
+            walletAddress={appState.walletAddress}
+          />
           </div>
         )}
 
