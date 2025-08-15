@@ -39,6 +39,17 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
     return base58Regex.test(addr);
   };
 
+  const validateHeliusKey = (key: string): boolean => {
+    // Helius keys are typically UUID format
+    if (!key.trim()) return true; // Optional field, empty is valid
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(key);
+  };
+
+  const validateSeconds = (secs: number): boolean => {
+    return secs >= 5 && secs <= 86400;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -54,8 +65,13 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
       return;
     }
 
-    if (seconds < 5 || seconds > 86400) {
+    if (!validateSeconds(seconds)) {
       setError('Lookback period must be between 5 and 86400 seconds (24 hours).');
+      return;
+    }
+
+    if (!validateHeliusKey(heliusKey)) {
+      setError('Invalid Helius API key format. Expected UUID format.');
       return;
     }
 
@@ -92,6 +108,12 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
     dispatch(setSeconds(value));
   };
 
+  // Determine validation states
+  const isTokenMintValid = tokenMint ? validateAddress(tokenMint) : null;
+  const isWalletAddressValid = walletAddress ? validateAddress(walletAddress) : null;
+  const isHeliusKeyValid = heliusKey ? validateHeliusKey(heliusKey) : null;
+  const isSecondsValid = validateSeconds(seconds);
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -102,15 +124,24 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
             <label className="text-sm font-medium text-slate-700 block">
               Token Mint Address <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={tokenMint}
-              onChange={(e) => handleTokenMintChange(e.target.value)}
-              placeholder="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-              className="w-full h-12 px-4 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
-              disabled={loading}
-              required
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={tokenMint}
+                onChange={(e) => handleTokenMintChange(e.target.value)}
+                placeholder="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
+                disabled={loading}
+                required
+              />
+              {isTokenMintValid !== null && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    isTokenMintValid ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                </div>
+              )}
+            </div>
             <p className="text-xs text-slate-500">
               Enter any Solana SPL token mint address (e.g., USDC, BONK, USDT)
             </p>
@@ -148,7 +179,9 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 <div className={`w-2 h-2 rounded-full ${
-                  isWalletConnected ? 'bg-green-400' : 'bg-slate-300'
+                  isWalletConnected ? 'bg-green-500' : 
+                  isWalletAddressValid === null ? 'bg-slate-300' :
+                  isWalletAddressValid ? 'bg-green-500' : 'bg-red-500'
                 }`}></div>
               </div>
             </div>
@@ -174,7 +207,10 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 disabled={loading}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <div className={`w-2 h-2 rounded-full ${
+                  isHeliusKeyValid === null ? 'bg-green-500' : // Empty is valid
+                  isHeliusKeyValid ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
               </div>
             </div>
             <p className="text-xs text-slate-500">
@@ -224,9 +260,14 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 onChange={(e) => handleSecondsChange(parseInt(e.target.value) || 600)}
                 min="5"
                 max="86400"
-                className="w-full h-12 px-4 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all"
+                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all"
                 disabled={loading}
               />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className={`w-2 h-2 rounded-full ${
+                  isSecondsValid ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+              </div>
             </div>
             <p className="text-xs text-slate-500">
               How far back to look for transfers (5 seconds to 24 hours)
