@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { Header } from './components/Header';
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
@@ -112,156 +113,160 @@ function TokenTracker() {
     isStreaming.current = false;
   };
 
-  if (!appState) {
-    return (
-      <>
-        <AutoWalletConnect />
-        <WalletInput onSubmit={handleAnalyze} loading={isLoading} />
-      </>
-    );
-  }
-
   const combinedTransfers = (streamTransfers.length ? streamTransfers : []).concat(transfers || []);
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleReset}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back
-              </button>
-              <div className="h-4 w-px bg-slate-300"></div>
-              <div>
-                <h1 className="text-lg font-semibold text-slate-900">
-                  {tokenMetadata?.name || 'Token'} Transfer Analytics
-                </h1>
-                <p className="text-sm text-slate-600">
-                  {appState.walletAddress 
-                    ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}`
-                    : `All ${tokenMetadata?.symbol || 'Token'} transfers`}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 text-sm text-slate-600">
-              <button
-                onClick={() => setShowApiStatus(true)}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors"
-                title="Check API Status"
-              >
-                <Activity className="w-3 h-3" />
-                API Status
-              </button>
-              <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-              <span>{tokenMetadata?.symbol || 'TOKEN'}</span>
-              <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-              <span>Lookback: {appState.seconds}s</span>
-              <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-              {streamStart && <span>Started: {new Date(streamStart).toLocaleTimeString()}</span>}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Loading skeleton for TokenInfoCard */}
-        {isLoadingMetadata && (
-          <div className="mb-8">
-            <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden animate-pulse">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-slate-200">
+      <AutoWalletConnect />
+      <Header />
+      
+      {!appState ? (
+        <WalletInput onSubmit={handleAnalyze} loading={isLoading} />
+      ) : (
+        <>
+          {/* Secondary Header with Back Button */}
+          <div className="bg-white border-b border-slate-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-14">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-slate-300 rounded-full"></div>
-                  <div className="flex-1">
-                    <div className="h-8 bg-slate-300 rounded w-48 mb-2"></div>
-                    <div className="h-4 bg-slate-200 rounded w-32"></div>
+                  <button
+                    onClick={handleReset}
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back
+                  </button>
+                  <div className="h-4 w-px bg-slate-300"></div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-900">
+                      {tokenMetadata?.name || 'Token'} Transfer Analytics
+                    </h2>
+                    <p className="text-xs text-slate-600">
+                      {appState.walletAddress 
+                        ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}`
+                        : `All ${tokenMetadata?.symbol || 'Token'} transfers`}
+                    </p>
                   </div>
                 </div>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="bg-slate-50 rounded-lg p-4">
-                      <div className="h-4 bg-slate-200 rounded w-20 mb-2"></div>
-                      <div className="h-6 bg-slate-300 rounded w-24"></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Token Information Card */}
-        {tokenMetadata && (
-          <div className="mb-8">
-            <TokenInfoCard tokenMetadata={tokenMetadata} />
-          </div>
-        )}
-
-        {isTracking && (
-          <div className="flex items-center justify-center mb-4">
-            <div className="inline-flex items-center gap-2 text-slate-600 text-sm">
-              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
-              <span>Tracking...</span>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="max-w-2xl mx-auto mb-6">
-            <div className="bg-white border border-red-200 rounded-xl p-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Analysis Warning</h3>
-                  <p className="text-slate-700 mb-2">
-                    {error instanceof Error ? error.message : 'An issue occurred while fetching transfer data.'}
-                  </p>
-                  {streamTransfers.length > 0 && (
-                    <p className="text-slate-600 text-sm">
-                      Streaming results are still coming in below.
-                    </p>
+                <div className="flex items-center gap-3 text-sm text-slate-600">
+                  <button
+                    onClick={() => setShowApiStatus(true)}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors"
+                    title="Check API Status"
+                  >
+                    <Activity className="w-3 h-3" />
+                    API Status
+                  </button>
+                  <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
+                  <span className="text-xs">{tokenMetadata?.symbol || 'TOKEN'}</span>
+                  <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
+                  <span className="text-xs">Lookback: {appState.seconds}s</span>
+                  {streamStart && (
+                    <>
+                      <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
+                      <span className="text-xs">Started: {new Date(streamStart).toLocaleTimeString()}</span>
+                    </>
                   )}
                 </div>
               </div>
             </div>
           </div>
-        )}
 
-        {/* Transfer List Section */}
-        {(combinedTransfers.length > 0) && (
-          <div>
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-slate-900">Recent Transfers</h2>
-              <p className="text-sm text-slate-600">
-                {combinedTransfers.length} transfer{combinedTransfers.length !== 1 ? 's' : ''} found
-                {appState.walletAddress ? ` for wallet ${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : ''}
-              </p>
-            </div>
-            <TransferList 
-              transfers={combinedTransfers} 
-              tokenMetadata={tokenMetadata!} 
-              walletAddress={appState.walletAddress}
-            />
-          </div>
-        )}
+          {/* Main Content */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Loading skeleton for TokenInfoCard */}
+            {isLoadingMetadata && (
+              <div className="mb-8">
+                <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden animate-pulse">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-slate-200">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-slate-300 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="h-8 bg-slate-300 rounded w-48 mb-2"></div>
+                        <div className="h-4 bg-slate-200 rounded w-32"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="bg-slate-50 rounded-lg p-4">
+                          <div className="h-4 bg-slate-200 rounded w-20 mb-2"></div>
+                          <div className="h-6 bg-slate-300 rounded w-24"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
-        {isLoading && combinedTransfers.length === 0 && (
-          <div className="text-center text-slate-600">
-            Scanning blockchain for transfers...
+            {/* Token Information Card */}
+            {tokenMetadata && (
+              <div className="mb-8">
+                <TokenInfoCard tokenMetadata={tokenMetadata} />
+              </div>
+            )}
+
+            {isTracking && (
+              <div className="flex items-center justify-center mb-4">
+                <div className="inline-flex items-center gap-2 text-slate-600 text-sm">
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+                  <span>Tracking...</span>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="max-w-2xl mx-auto mb-6">
+                <div className="bg-white border border-red-200 rounded-xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Analysis Warning</h3>
+                      <p className="text-slate-700 mb-2">
+                        {error instanceof Error ? error.message : 'An issue occurred while fetching transfer data.'}
+                      </p>
+                      {streamTransfers.length > 0 && (
+                        <p className="text-slate-600 text-sm">
+                          Streaming results are still coming in below.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Transfer List Section */}
+            {(combinedTransfers.length > 0) && (
+              <div>
+                <div className="mb-4">
+                  <h2 className="text-xl font-bold text-slate-900">Recent Transfers</h2>
+                  <p className="text-sm text-slate-600">
+                    {combinedTransfers.length} transfer{combinedTransfers.length !== 1 ? 's' : ''} found
+                    {appState.walletAddress ? ` for wallet ${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : ''}
+                  </p>
+                </div>
+                <TransferList 
+                  transfers={combinedTransfers} 
+                  tokenMetadata={tokenMetadata!} 
+                  walletAddress={appState.walletAddress}
+                />
+              </div>
+            )}
+
+            {isLoading && combinedTransfers.length === 0 && (
+              <div className="text-center text-slate-600">
+                Scanning blockchain for transfers...
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* API Status Modal */}
       <ApiStatusModal 

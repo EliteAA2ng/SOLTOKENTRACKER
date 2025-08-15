@@ -1,7 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Search, AlertTriangle, Info } from 'lucide-react';
 import { COMMON_TOKENS } from '../config';
-import { WalletConnection } from './WalletConnection';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { 
   setTokenMint, 
@@ -31,7 +30,6 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   const isWalletConnected = useAppSelector((state) => state.form.isWalletConnected);
   
   const [error, setError] = useState('');
-  const [isConnectingWallet, setIsConnectingWallet] = useState(false);
 
   const validateAddress = (addr: string): boolean => {
     if (!addr.trim()) return false;
@@ -43,12 +41,6 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Prevent submission if wallet is being connected
-    if (isConnectingWallet) {
-      console.log('Form submission blocked: wallet connection in progress');
-      return;
-    }
     
     setError('');
 
@@ -76,19 +68,6 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
     });
   };
 
-  // Handle wallet selection with proper state management
-  const handleWalletSelect = useCallback((address: string) => {
-    setIsConnectingWallet(true);
-    dispatch(setWalletAddress(address));
-    if (address) {
-      dispatch(setIsWalletConnected(true));
-    } else {
-      dispatch(setIsWalletConnected(false));
-    }
-    // Reset the connecting state after a brief delay
-    setTimeout(() => setIsConnectingWallet(false), 100);
-  }, [dispatch]);
-
   // Handle token selection
   const handleTokenSelect = (address: string) => {
     dispatch(setTokenMint(address));
@@ -114,7 +93,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 -mt-16">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
@@ -124,10 +103,10 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
             </div>
           </div>
           <h1 className="text-2xl font-semibold text-slate-900 mb-2">
-            Solana Token Tracker
+            Track Token Transfers
           </h1>
           <p className="text-slate-600 text-sm leading-relaxed">
-            Comprehensive on-chain analysis for any Solana SPL token transfers
+            Enter a token address to analyze transfers on Solana
           </p>
         </div>
 
@@ -176,35 +155,27 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
             <label className="text-sm font-medium text-slate-700 block">
               Wallet Address (Optional)
             </label>
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
+            <div className="relative">
               <input
                 type="text"
                 value={walletAddress}
                 onChange={(e) => handleWalletAddressChange(e.target.value)}
-                placeholder="Filter by specific wallet address"
+                placeholder={isWalletConnected ? "Connected via wallet" : "Filter by specific wallet address"}
                 className={`w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono ${
                   isWalletConnected ? 'bg-slate-50 cursor-not-allowed' : ''
                 }`}
-                disabled={loading || isConnectingWallet || isWalletConnected}
+                disabled={loading || isWalletConnected}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 <div className={`w-2 h-2 rounded-full ${
                   isWalletConnected ? 'bg-green-400' : 'bg-slate-300'
                 }`}></div>
               </div>
-              </div>
-              <WalletConnection 
-                onWalletSelect={handleWalletSelect}
-                currentAddress={walletAddress}
-                disabled={loading}
-                isManualInput={!isWalletConnected}
-              />
             </div>
             <p className="text-xs text-slate-500">
               {isWalletConnected 
-                ? 'Wallet connected. Disconnect to enter address manually.'
-                : 'Connect your wallet or manually enter an address to filter transfers'}
+                ? 'Wallet connected. Disconnect from header to enter address manually.'
+                : 'Leave empty to track all transfers, or enter address to filter'}
             </p>
           </div>
 
@@ -295,18 +266,13 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading || isConnectingWallet || !tokenMint}
+            disabled={loading || !tokenMint}
             className="w-full h-12 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:from-violet-400 disabled:to-purple-400 text-white font-medium rounded-xl transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 <span>Analyzing...</span>
-              </>
-            ) : isConnectingWallet ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Connecting Wallet...</span>
               </>
             ) : (
               <>
@@ -326,7 +292,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               <p>• Optional wallet filtering for specific addresses</p>
               <p>• Real-time streaming of new transfers</p>
               <p>• Comprehensive token information and market data</p>
-              <p>• Form state persists during your session</p>
+              <p>• Connect wallet from header for easy filtering</p>
             </div>
           </div>
         </div>
