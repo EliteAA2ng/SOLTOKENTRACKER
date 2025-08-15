@@ -1,6 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from '@solana/wallet-adapter-wallets';
+import { clusterApiUrl } from '@solana/web3.js';
 import { Header } from './components/Header';
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
@@ -12,6 +20,9 @@ import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
 import { ArrowLeft, AlertCircle, Activity } from 'lucide-react';
 import { store } from './store/store';
+
+// Import wallet adapter CSS
+import '@solana/wallet-adapter-react-ui/styles.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -277,11 +288,37 @@ function TokenTracker() {
   );
 }
 
+function WalletApp() {
+  // The network can be set to 'devnet', 'testnet', or 'mainnet-beta'.
+  const network = WalletAdapterNetwork.Mainnet;
+
+  // You can also provide a custom RPC endpoint.
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter(),
+    ],
+    []
+  );
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>
+          <TokenTracker />
+        </WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+}
+
 export default function App() {
   return (
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
-        <TokenTracker />
+        <WalletApp />
       </QueryClientProvider>
     </Provider>
   );

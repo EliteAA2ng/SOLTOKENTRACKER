@@ -9,10 +9,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      buffer: 'buffer',
+      stream: 'stream-browserify',
+      crypto: 'crypto-browserify',
     },
   },
   optimizeDeps: {
-    include: ['buffer'],
+    include: ['@solana/wallet-adapter-base'],
   },
 }) 

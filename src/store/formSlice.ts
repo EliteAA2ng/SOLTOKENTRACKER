@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { DEFAULT_CONFIG } from '../config';
+import { DEFAULT_CONFIG, COMMON_TOKENS } from '../config';
 
 interface FormState {
   tokenMint: string;
@@ -10,7 +10,7 @@ interface FormState {
 }
 
 const initialState: FormState = {
-  tokenMint: '',
+  tokenMint: COMMON_TOKENS.USDC, // Set USDC as default
   walletAddress: '',
   heliusKey: DEFAULT_CONFIG.defaultHeliusKey,
   seconds: 600, // Default to 10 minutes

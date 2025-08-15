@@ -1,21 +1,25 @@
-import { WalletConnection } from './WalletConnection';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useAppDispatch } from '../store/hooks';
 import { setWalletAddress, setIsWalletConnected } from '../store/formSlice';
 import { Search } from 'lucide-react';
+import { useEffect } from 'react';
 
 export function Header() {
   const dispatch = useAppDispatch();
-  const walletAddress = useAppSelector((state) => state.form.walletAddress);
-  const isWalletConnected = useAppSelector((state) => state.form.isWalletConnected);
+  const { publicKey, connected } = useWallet();
 
-  const handleWalletSelect = (address: string) => {
-    dispatch(setWalletAddress(address));
-    if (address) {
+  // Update Redux state when wallet connection changes
+  useEffect(() => {
+    if (connected && publicKey) {
+      const address = publicKey.toString();
+      dispatch(setWalletAddress(address));
       dispatch(setIsWalletConnected(true));
     } else {
+      dispatch(setWalletAddress(''));
       dispatch(setIsWalletConnected(false));
     }
-  };
+  }, [connected, publicKey, dispatch]);
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
@@ -40,11 +44,7 @@ export function Header() {
 
           {/* Wallet Connection */}
           <div className="flex items-center">
-            <WalletConnection 
-              onWalletSelect={handleWalletSelect}
-              currentAddress={walletAddress}
-              isManualInput={!isWalletConnected}
-            />
+            <WalletMultiButton />
           </div>
         </div>
       </div>
