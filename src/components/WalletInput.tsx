@@ -9,6 +9,7 @@ interface WalletInputProps {
     walletAddress?: string;
     heliusKey: string;
     seconds: number;
+    walletAddressSource?: 'manual' | 'connected' | null;
   }) => void;
   loading: boolean;
   isAutoConnecting?: boolean;
@@ -45,6 +46,9 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
   const [error, setError] = useState('');
   const [isFormInitialized, setIsFormInitialized] = useState(false);
   const [showRestoredMessage, setShowRestoredMessage] = useState(false);
+  const [walletAddressSource, setWalletAddressSource] = useState<'manual' | 'connected' | null>(
+    savedData.walletAddressSource || null
+  );
 
   // Initialize form with saved data on component mount
   useEffect(() => {
@@ -58,6 +62,9 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
     if (saved.walletAddress) {
       setWalletAddress(saved.walletAddress);
       hasRestoredData = true;
+    }
+    if (saved.walletAddressSource) {
+      setWalletAddressSource(saved.walletAddressSource);
     }
     if (saved.heliusKey && saved.heliusKey !== DEFAULT_CONFIG.defaultHeliusKey) {
       setHeliusKey(saved.heliusKey);
@@ -81,20 +88,31 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
   // Save form data whenever fields change (but only after initialization)
   useEffect(() => {
     if (isFormInitialized) {
-      const formData = { tokenMint, walletAddress, heliusKey, seconds };
+      const formData = { 
+        tokenMint, 
+        walletAddress, 
+        heliusKey, 
+        seconds,
+        walletAddressSource 
+      };
       saveFormData(formData);
     }
-  }, [tokenMint, walletAddress, heliusKey, seconds, isFormInitialized]);
+  }, [tokenMint, walletAddress, heliusKey, seconds, walletAddressSource, isFormInitialized]);
 
-  // Handle wallet connection - only update if no saved address exists
+  // Handle wallet connection - always update when wallet connects/disconnects
   const handleWalletSelect = (address: string) => {
-    // Only update wallet address from connection if:
-    // 1. No saved address exists, OR
-    // 2. The saved address is empty, OR  
-    // 3. User explicitly connected a different wallet
-    const savedAddress = loadFormData().walletAddress;
-    if (!savedAddress || savedAddress.trim() === '' || address !== savedAddress) {
-      setWalletAddress(address);
+    setWalletAddress(address);
+    setWalletAddressSource(address ? 'connected' : null);
+  };
+
+  // Handle manual wallet address input
+  const handleManualWalletInput = (address: string) => {
+    setWalletAddress(address);
+    // If user is manually typing, mark as manual input
+    if (address.trim() !== '') {
+      setWalletAddressSource('manual');
+    } else {
+      setWalletAddressSource(null);
     }
   };
 
@@ -136,7 +154,8 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
       tokenMint: tokenMint.trim(), 
       walletAddress: cleanWalletAddress, 
       heliusKey: finalHeliusKey, 
-      seconds 
+      seconds,
+      walletAddressSource 
     });
   };
 
@@ -223,13 +242,19 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
                 <input
                   type="text"
                   value={walletAddress}
-                  onChange={(e) => setWalletAddress(e.target.value)}
+                  onChange={(e) => handleManualWalletInput(e.target.value)}
                   placeholder="Filter by specific wallet address"
                   className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
                   disabled={loading}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+                  <div className={`w-2 h-2 rounded-full ${
+                    walletAddressSource === 'connected' 
+                      ? 'bg-green-400' 
+                      : walletAddressSource === 'manual'
+                      ? 'bg-blue-400'
+                      : 'bg-slate-300'
+                  }`}></div>
                 </div>
               </div>
               <WalletConnection 
@@ -238,7 +263,12 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
               />
             </div>
             <p className="text-xs text-slate-500">
-              Connect your wallet or manually enter an address to filter transfers
+              {walletAddressSource === 'connected' 
+                ? '🟢 Connected wallet address (will update if wallet changes)'
+                : walletAddressSource === 'manual'
+                ? '🔵 Manually entered address (will be maintained)'
+                : 'Connect your wallet or manually enter an address to filter transfers'
+              }
             </p>
           </div>
 

@@ -40,6 +40,7 @@ interface AppState {
   walletAddress?: string;
   heliusKey: string;
   seconds: number;
+  walletAddressSource?: 'manual' | 'connected' | null;
 }
 
 function TokenTracker() {
@@ -116,12 +117,14 @@ function TokenTracker() {
     walletAddress?: string;
     heliusKey: string;
     seconds: number;
+    walletAddressSource?: 'manual' | 'connected' | null;
   }) => {
     setAppState({ 
       tokenMint: data.tokenMint, 
       walletAddress: data.walletAddress || undefined, 
       heliusKey: data.heliusKey, 
-      seconds: data.seconds 
+      seconds: data.seconds,
+      walletAddressSource: data.walletAddressSource
     });
   };
 
@@ -133,7 +136,8 @@ function TokenTracker() {
         tokenMint: appState.tokenMint,
         walletAddress: appState.walletAddress || '',
         heliusKey: appState.heliusKey,
-        seconds: appState.seconds
+        seconds: appState.seconds,
+        walletAddressSource: appState.walletAddressSource // Use the existing source
       };
       
       try {
