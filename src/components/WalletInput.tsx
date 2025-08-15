@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, AlertTriangle, Info } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { COMMON_TOKENS, DEFAULT_CONFIG } from '../config';
 
 interface WalletInputProps {
@@ -39,7 +38,7 @@ const loadFormData = () => {
 
 export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   const savedData = loadFormData();
-  const { connected, publicKey } = useWallet();
+  const { connected, publicKey, disconnect } = useWallet();
   
   const [tokenMint, setTokenMint] = useState('');
   const [walletAddress, setWalletAddress] = useState('');
@@ -262,14 +261,38 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                   }`}></div>
                 </div>
               </div>
-              <WalletMultiButton />
+              {connected ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm font-medium text-green-700">
+                      Connected
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={disconnect}
+                    className="px-3 py-2 text-sm font-medium rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                    disabled={loading}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                  <span className="text-sm text-slate-600">
+                    Auto-connecting...
+                  </span>
+                </div>
+              )}
             </div>
             <p className="text-xs text-slate-500">
               {connected
-                ? '🟢 Connected wallet address (disconnect to enable manual entry)'
+                ? '🟢 Wallet connected automatically (disconnect to enable manual entry)'
                 : walletAddressSource === 'manual'
                 ? '🔵 Manually entered address'
-                : 'Connect your wallet or manually enter an address to filter transfers'
+                : 'Wallet will connect automatically on first visit, or manually enter an address'
               }
             </p>
           </div>

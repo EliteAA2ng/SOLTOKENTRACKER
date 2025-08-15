@@ -19,7 +19,7 @@ export function AutoConnectWallet() {
       // Mark that we've attempted auto-connect
       sessionStorage.setItem('autoConnectAttempted', 'true');
       
-      console.log('🔄 Attempting auto-connect...');
+      console.log('🔄 Attempting automatic wallet connection...');
       
       try {
         // Try to connect to Phantom first (most popular)
@@ -30,9 +30,13 @@ export function AutoConnectWallet() {
         if (phantomWallet && (window as any).phantom?.solana?.isPhantom) {
           console.log('👻 Auto-connecting to Phantom...');
           select(phantomWallet.adapter.name);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for selection
+          
+          // Wait for selection to take effect
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Force connection
           await connect();
-          console.log('✅ Auto-connected to Phantom');
+          console.log('✅ Successfully auto-connected to Phantom');
           return;
         }
         
@@ -44,16 +48,20 @@ export function AutoConnectWallet() {
         if (solflareWallet && (window as any).solflare?.isSolflare) {
           console.log('🔥 Auto-connecting to Solflare...');
           select(solflareWallet.adapter.name);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for selection
+          
+          // Wait for selection to take effect
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Force connection
           await connect();
-          console.log('✅ Auto-connected to Solflare');
+          console.log('✅ Successfully auto-connected to Solflare');
           return;
         }
         
         console.log('ℹ️ No compatible wallets found for auto-connect');
         
       } catch (error) {
-        console.log('⚠️ Auto-connect failed:', error);
+        console.log('⚠️ Auto-connect failed (user may have rejected):', error);
       }
     };
 
