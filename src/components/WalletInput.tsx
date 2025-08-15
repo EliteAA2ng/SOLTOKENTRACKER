@@ -169,7 +169,6 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               </div>
               <WalletConnection 
                 onWalletSelect={setWalletAddress}
-                currentAddress={walletAddress}
               />
             </div>
             <p className="text-xs text-slate-500">
