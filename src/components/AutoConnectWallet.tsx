@@ -12,6 +12,19 @@ export function AutoConnectWallet({ onConnectingChange }: AutoConnectWalletProps
   // Check if this is the first visit in this session
   const isFirstVisit = !sessionStorage.getItem('walletAutoConnectAttempted');
 
+  // Add debugging for component mount
+  useEffect(() => {
+    console.log('🚀 AutoConnectWallet component mounted');
+    console.log('📊 Initial state:', {
+      isFirstVisit,
+      hasAttemptedAutoConnect,
+      connected,
+      connecting,
+      walletsAvailable: wallets.length,
+      sessionStorageValue: sessionStorage.getItem('walletAutoConnectAttempted')
+    });
+  }, []);
+
   useEffect(() => {
     const autoConnect = async () => {
       console.log('🔍 Auto-connect check:', {
@@ -19,7 +32,8 @@ export function AutoConnectWallet({ onConnectingChange }: AutoConnectWalletProps
         hasAttemptedAutoConnect,
         connected,
         connecting,
-        walletsAvailable: wallets.length
+        walletsAvailable: wallets.length,
+        sessionStorageValue: sessionStorage.getItem('walletAutoConnectAttempted')
       });
 
       // Only auto-connect on first visit and if not already attempted
@@ -32,6 +46,12 @@ export function AutoConnectWallet({ onConnectingChange }: AutoConnectWalletProps
         return;
       }
 
+      // Check if we have any wallets available
+      if (wallets.length === 0) {
+        console.log('⚠️ No wallet adapters available yet, will retry...');
+        return;
+      }
+
       // Mark that we've attempted auto-connect for this session
       sessionStorage.setItem('walletAutoConnectAttempted', 'true');
       setHasAttemptedAutoConnect(true);
@@ -40,6 +60,15 @@ export function AutoConnectWallet({ onConnectingChange }: AutoConnectWalletProps
       onConnectingChange?.(true);
 
       console.log('🔄 First visit detected - attempting automatic wallet connection...');
+
+      // Check for available wallet extensions in browser
+      const availableWallets = {
+        phantom: typeof window !== 'undefined' && (window as any).phantom?.solana?.isPhantom,
+        solflare: typeof window !== 'undefined' && (window as any).solflare?.isSolflare,
+        backpack: typeof window !== 'undefined' && (window as any).backpack?.isBackpack,
+      };
+      
+      console.log('🌐 Browser wallet extensions detected:', availableWallets);
 
       try {
         // Strategy 1: Try to connect to a previously connected wallet
@@ -121,8 +150,8 @@ export function AutoConnectWallet({ onConnectingChange }: AutoConnectWalletProps
       }
     };
 
-    // Add a delay to ensure wallet adapters and DOM are ready
-    const timer = setTimeout(autoConnect, 1500);
+    // Add a longer delay to ensure wallet adapters and DOM are ready
+    const timer = setTimeout(autoConnect, 3000); // Increased from 1500ms to 3000ms
     
     return () => clearTimeout(timer);
   }, [wallet, wallets, select, connect, connected, connecting, hasAttemptedAutoConnect, isFirstVisit, onConnectingChange]);

@@ -340,7 +340,7 @@ export default function App() {
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider 
         wallets={wallets} 
-        autoConnect={true}
+        autoConnect={false}
         onError={(error) => {
           // Log wallet errors but don't show them to users unless critical
           console.log('Wallet error:', error);

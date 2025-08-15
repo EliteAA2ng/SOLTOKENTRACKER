@@ -206,17 +206,31 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
           
           {/* Debug: Auto-connect trigger (only in development) */}
           {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <button
                 type="button"
                 onClick={() => {
+                  console.log('🔄 Manual reset triggered');
+                  console.log('Before reset:', {
+                    sessionStorage: sessionStorage.getItem('walletAutoConnectAttempted'),
+                    localStorage: localStorage.getItem('walletName')
+                  });
                   sessionStorage.removeItem('walletAutoConnectAttempted');
-                  window.location.reload();
+                  localStorage.removeItem('walletName');
+                  console.log('🧹 Cleared session and local storage');
+                  setTimeout(() => {
+                    console.log('🔄 Reloading page...');
+                    window.location.reload();
+                  }, 500);
                 }}
                 className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded"
               >
                 🔄 Reset & Test Auto-Connect
               </button>
+              <div className="text-xs text-gray-500">
+                Session: {sessionStorage.getItem('walletAutoConnectAttempted') || 'not set'} | 
+                Wallet: {localStorage.getItem('walletName') || 'none'}
+              </div>
             </div>
           )}
         </div>
