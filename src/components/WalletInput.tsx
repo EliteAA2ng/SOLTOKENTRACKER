@@ -131,7 +131,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   const isSecondsValid = validateSeconds(seconds);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-start justify-center p-4 pt-24">
       <div className="w-full max-w-lg">
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
