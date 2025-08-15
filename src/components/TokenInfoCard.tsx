@@ -6,14 +6,13 @@ interface TokenInfoCardProps {
 }
 
 export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
-  const formatPrice = (price: number | undefined) => {
+  const formatPrice = (price: number | null | undefined) => {
     if (!price) return 'N/A';
     if (price < 0.01) return `$${price.toFixed(6)}`;
-    if (price < 1) return `$${price.toFixed(4)}`;
     return `$${price.toFixed(2)}`;
   };
 
-  const formatMarketCap = (marketCap: number | undefined) => {
+  const formatMarketCap = (marketCap: number | null | undefined) => {
     if (!marketCap) return 'N/A';
     if (marketCap >= 1e9) return `$${(marketCap / 1e9).toFixed(2)}B`;
     if (marketCap >= 1e6) return `$${(marketCap / 1e6).toFixed(2)}M`;
@@ -21,15 +20,14 @@ export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
     return `$${marketCap.toFixed(0)}`;
   };
 
-  const formatVolume = (volume: number | undefined) => {
+  const formatVolume = (volume: number | null | undefined) => {
     if (!volume) return 'N/A';
-    if (volume >= 1e9) return `$${(volume / 1e9).toFixed(2)}B`;
     if (volume >= 1e6) return `$${(volume / 1e6).toFixed(2)}M`;
     if (volume >= 1e3) return `$${(volume / 1e3).toFixed(2)}K`;
     return `$${volume.toFixed(0)}`;
   };
 
-  const formatSupply = (supply: number | undefined) => {
+  const formatSupply = (supply: number | null | undefined) => {
     if (!supply) return 'N/A';
     if (supply >= 1e9) return `${(supply / 1e9).toFixed(2)}B`;
     if (supply >= 1e6) return `${(supply / 1e6).toFixed(2)}M`;
@@ -37,106 +35,122 @@ export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
     return supply.toFixed(0);
   };
 
-  const isPricePositive = tokenMetadata.priceChange24h && tokenMetadata.priceChange24h > 0;
+  const getPriceChangeColor = (change: number | null | undefined) => {
+    if (!change) return 'text-slate-500';
+    return change >= 0 ? 'text-green-600' : 'text-red-600';
+  };
+
+  const getPriceChangeIcon = (change: number | null | undefined) => {
+    if (!change) return null;
+    return change >= 0 ? 
+      <TrendingUp className="w-4 h-4" /> : 
+      <TrendingDown className="w-4 h-4" />;
+  };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-slate-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center">
-              <span className="text-2xl font-bold text-slate-700">
-                {tokenMetadata.symbol?.slice(0, 3) || '?'}
-              </span>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                {tokenMetadata.name || 'Unknown Token'}
-              </h2>
-              <p className="text-slate-600 font-mono text-sm">
-                {tokenMetadata.symbol || 'N/A'}
-              </p>
-            </div>
+      <div className="bg-gradient-to-r from-slate-50 to-slate-100 p-6 border-b border-slate-200">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
+            <span className="text-2xl font-bold text-slate-600">
+              {tokenMetadata.symbol?.charAt(0) || '?'}
+            </span>
           </div>
-          
-          {/* Price and Change */}
-          <div className="text-right">
-            <div className="text-2xl font-bold text-slate-900">
-              {formatPrice(tokenMetadata.price)}
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-slate-900 mb-1">
+              {tokenMetadata.name || 'Unknown Token'}
+            </h2>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-medium text-slate-600">
+                {tokenMetadata.symbol || 'N/A'}
+              </span>
+              {tokenMetadata.rank && (
+                <span className="px-2 py-1 bg-slate-200 text-slate-700 text-xs font-medium rounded">
+                  #{tokenMetadata.rank}
+                </span>
+              )}
             </div>
-            {tokenMetadata.priceChange24h && (
-              <div className={`flex items-center gap-1 text-sm font-medium ${
-                isPricePositive ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {isPricePositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                {isPricePositive ? '+' : ''}{tokenMetadata.priceChange24h.toFixed(2)}%
-              </div>
-            )}
           </div>
         </div>
       </div>
 
       {/* Stats */}
       <div className="p-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="text-center">
-            <div className="text-xs text-slate-500 mb-1">Market Cap</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div>
+            <div className="text-sm text-slate-500 mb-1">Price</div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold text-slate-900">
+                {formatPrice(tokenMetadata.price)}
+              </span>
+              {tokenMetadata.priceChange24h && (
+                <div className={`flex items-center gap-1 text-sm ${getPriceChangeColor(tokenMetadata.priceChange24h)}`}>
+                  {getPriceChangeIcon(tokenMetadata.priceChange24h)}
+                  {tokenMetadata.priceChange24h > 0 ? '+' : ''}{tokenMetadata.priceChange24h.toFixed(2)}%
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-sm text-slate-500 mb-1">Market Cap</div>
             <div className="text-lg font-semibold text-slate-900">
               {formatMarketCap(tokenMetadata.marketCap)}
             </div>
           </div>
-          
-          <div className="text-center">
-            <div className="text-xs text-slate-500 mb-1">24h Volume</div>
+
+          <div>
+            <div className="text-sm text-slate-500 mb-1">24h Volume</div>
             <div className="text-lg font-semibold text-slate-900">
               {formatVolume(tokenMetadata.volume24h)}
             </div>
           </div>
-          
-          <div className="text-center">
-            <div className="text-xs text-slate-500 mb-1">Supply</div>
+
+          <div>
+            <div className="text-sm text-slate-500 mb-1">Supply</div>
             <div className="text-lg font-semibold text-slate-900">
               {formatSupply(tokenMetadata.supply)}
             </div>
           </div>
-          
-          <div className="text-center">
-            <div className="text-xs text-slate-500 mb-1">Rank</div>
-            <div className="text-lg font-semibold text-slate-900">
-              {tokenMetadata.rank ? `#${tokenMetadata.rank}` : 'N/A'}
-            </div>
-          </div>
         </div>
 
-        {/* Social Links */}
+        {/* Description */}
+        {tokenMetadata.description && (
+          <div className="mt-6 pt-6 border-t border-slate-200">
+            <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
+              {tokenMetadata.description}
+            </p>
+          </div>
+        )}
+
+        {/* Links */}
         {(tokenMetadata.website || tokenMetadata.twitter) && (
-          <div className="flex items-center justify-center gap-4 mt-6 pt-6 border-t border-slate-200">
-            {tokenMetadata.website && (
-              <a
-                href={tokenMetadata.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Website
-              </a>
-            )}
-            
-            {tokenMetadata.twitter && (
-              <a
-                href={tokenMetadata.twitter}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-                Twitter
-              </a>
-            )}
+          <div className="mt-6 pt-6 border-t border-slate-200">
+            <div className="flex flex-wrap gap-3">
+              {tokenMetadata.website && (
+                <a
+                  href={tokenMetadata.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Website
+                </a>
+              )}
+              {tokenMetadata.twitter && (
+                <a
+                  href={tokenMetadata.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Twitter
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>
