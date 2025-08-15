@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletContext } from '../contexts/WalletContext';
@@ -23,6 +23,28 @@ export function WalletConnection({ showFullAddress = false, size = 'md' }: Walle
 
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Close modal when wallet connects
+  useEffect(() => {
+    if (isConnected && showWalletModal) {
+      console.log('✅ WalletConnection: Wallet connected, closing modal');
+      setShowWalletModal(false);
+    }
+  }, [isConnected, showWalletModal]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (showDropdown) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showDropdown]);
 
   // Size configurations
   const sizeConfig = {

@@ -57,20 +57,34 @@ export function WalletProvider({ children }: WalletProviderProps) {
   // Auto-connect logic
   useEffect(() => {
     const attemptAutoConnect = async () => {
+      console.log('🔍 WalletContext: Auto-connect check', {
+        connected,
+        connecting,
+        hasAttemptedAutoConnect,
+        walletsLength: wallets.length
+      });
+
       // Skip if already connected, connecting, or already attempted
       if (connected || connecting || hasAttemptedAutoConnect) {
+        console.log('🔍 WalletContext: Skipping auto-connect', {
+          connected,
+          connecting,
+          hasAttemptedAutoConnect
+        });
         return;
       }
 
       // Check if this is first visit
       const sessionAttempted = sessionStorage.getItem('walletAutoConnectAttempted');
       if (sessionAttempted) {
+        console.log('🔍 WalletContext: Session already attempted, skipping');
         setHasAttemptedAutoConnect(true);
         return;
       }
 
       // Skip if no wallets available
       if (wallets.length === 0) {
+        console.log('🔍 WalletContext: No wallets available yet, will retry');
         return;
       }
 
@@ -87,10 +101,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
           if (previousWallet) {
             console.log('🔄 WalletContext: Attempting to reconnect to', previousWalletName);
             select(previousWallet.adapter.name);
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Increased wait time
             await connect();
             console.log('✅ WalletContext: Successfully reconnected to', previousWalletName);
             return;
+          } else {
+            console.log('⚠️ WalletContext: Previous wallet adapter not found:', previousWalletName);
           }
         }
 
@@ -102,10 +118,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
           if (phantomWallet) {
             console.log('👻 WalletContext: Auto-connecting to Phantom...');
             select(phantomWallet.adapter.name);
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
             await connect();
             console.log('✅ WalletContext: Successfully connected to Phantom');
             return;
+          } else {
+            console.log('⚠️ WalletContext: Phantom detected but adapter not found');
           }
         }
 
@@ -117,10 +135,12 @@ export function WalletProvider({ children }: WalletProviderProps) {
           if (solflareWallet) {
             console.log('🔥 WalletContext: Auto-connecting to Solflare...');
             select(solflareWallet.adapter.name);
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
             await connect();
             console.log('✅ WalletContext: Successfully connected to Solflare');
             return;
+          } else {
+            console.log('⚠️ WalletContext: Solflare detected but adapter not found');
           }
         }
 
@@ -134,9 +154,21 @@ export function WalletProvider({ children }: WalletProviderProps) {
       }
     };
 
-    // Delay to ensure wallet adapters are loaded
-    const timer = setTimeout(attemptAutoConnect, 2000);
-    return () => clearTimeout(timer);
+    // Delay to ensure wallet adapters are loaded, with retry mechanism
+    const timer1 = setTimeout(attemptAutoConnect, 2000);
+    
+    // Retry if wallets weren't ready the first time
+    const timer2 = setTimeout(() => {
+      if (!connected && !hasAttemptedAutoConnect && wallets.length > 0) {
+        console.log('🔄 WalletContext: Retrying auto-connect...');
+        attemptAutoConnect();
+      }
+    }, 5000);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, [wallets, select, connect, connected, connecting, hasAttemptedAutoConnect]);
 
   // Store connected wallet name for future auto-connect

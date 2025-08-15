@@ -351,6 +351,60 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
             </div>
           </div>
         </div>
+
+        {/* Debug Panel (Development Only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-medium text-yellow-900 mb-2">Debug Info:</h3>
+                <div className="text-xs text-yellow-800 space-y-1">
+                  <div>Connected: {isConnected ? '✅ Yes' : '❌ No'}</div>
+                  <div>Auto-connecting: {isAutoConnecting ? '🔄 Yes' : '❌ No'}</div>
+                  <div>Wallet Address: {walletAddress ? `${walletAddress.slice(0, 8)}...` : 'None'}</div>
+                  <div>Manual Address: {manualAddress || 'None'}</div>
+                  <div>Active Address: {getActiveAddress() || 'None'}</div>
+                  <div>Input Disabled: {isInputDisabled() ? '✅ Yes' : '❌ No'}</div>
+                  <div>Session Attempted: {sessionStorage.getItem('walletAutoConnectAttempted') || 'No'}</div>
+                  <div>Stored Wallet: {localStorage.getItem('connectedWalletName') || 'None'}</div>
+                  {connectionError && <div className="text-red-600">Error: {connectionError}</div>}
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sessionStorage.removeItem('walletAutoConnectAttempted');
+                      localStorage.removeItem('connectedWalletName');
+                      console.log('🧹 Debug: Cleared storage, reloading...');
+                      window.location.reload();
+                    }}
+                    className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                  >
+                    Reset & Test Auto-Connect
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      console.log('🔍 Debug: Current wallet context state:', {
+                        isConnected,
+                        walletAddress,
+                        isAutoConnecting,
+                        manualAddress,
+                        connectionError,
+                        sessionStorage: sessionStorage.getItem('walletAutoConnectAttempted'),
+                        localStorage: localStorage.getItem('connectedWalletName')
+                      });
+                    }}
+                    className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                  >
+                    Log State to Console
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
