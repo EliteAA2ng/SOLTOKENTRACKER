@@ -29,6 +29,18 @@ export async function checkApiStatus(): Promise<ApiStatus[]> {
         const response = await fetch('https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112');
         return response.ok;
       }
+    },
+    {
+      name: 'Birdeye',
+      url: 'https://public-api.birdeye.so/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=50',
+      testFn: async () => {
+        const response = await fetch('https://public-api.birdeye.so/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=50', {
+          headers: {
+            'X-API-KEY': 'demo' // Using demo key for status check
+          }
+        });
+        return response.ok;
+      }
     }
   ];
 
@@ -48,37 +60,33 @@ export async function checkApiStatus(): Promise<ApiStatus[]> {
           message: result ? 'API accessible' : 'API failed'
         });
       } else if (typeof result === 'object' && result.status) {
-        if (result.ok) {
-          results.push({
-            name: api.name,
-            status: 'accessible',
-            message: 'API accessible'
-          });
-        } else if (result.status === 401) {
-          results.push({
-            name: api.name,
-            status: 'auth-required',
-            message: 'HTTP 401'
-          });
-        } else if (result.status === 429) {
-          results.push({
-            name: api.name,
-            status: 'rate-limited',
-            message: 'Rate limited'
-          });
-        } else {
-          results.push({
-            name: api.name,
-            status: 'failed',
-            message: `HTTP ${result.status}`
-          });
-        }
+        results.push({
+          name: api.name,
+          status: result.status,
+          message: result.message
+        });
       }
     } catch (error) {
+      let status: ApiStatus['status'] = 'failed';
+      let message = 'API failed';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          status = 'failed';
+          message = 'Request timeout';
+        } else if (error.message.includes('429')) {
+          status = 'rate-limited';
+          message = 'Rate limited';
+        } else if (error.message.includes('401') || error.message.includes('403')) {
+          status = 'auth-required';
+          message = 'Authentication required';
+        }
+      }
+      
       results.push({
         name: api.name,
-        status: 'failed',
-        message: error instanceof Error ? error.message : 'Network error'
+        status,
+        message
       });
     }
   }

@@ -1,153 +1,166 @@
 import { TokenMetadata } from '../types';
-import { ExternalLink, TrendingUp, TrendingDown } from 'lucide-react';
-import { useState } from 'react';
+import { TrendingUp, TrendingDown, Globe, Twitter, MessageCircle, Users } from 'lucide-react';
 
 interface TokenInfoCardProps {
   tokenMetadata: TokenMetadata;
 }
 
 export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
-  const [logoError, setLogoError] = useState(false);
-
-  const formatPrice = (price: number | null | undefined) => {
-    if (!price) return 'N/A';
-    if (price < 0.01) return `$${price.toFixed(6)}`;
-    return `$${price.toFixed(2)}`;
+  const formatNumber = (num: number | undefined, decimals = 2): string => {
+    if (num === undefined || num === null) return 'N/A';
+    
+    if (num >= 1e9) {
+      return `$${(num / 1e9).toFixed(decimals)}B`;
+    } else if (num >= 1e6) {
+      return `$${(num / 1e6).toFixed(decimals)}M`;
+    } else if (num >= 1e3) {
+      return `$${(num / 1e3).toFixed(decimals)}K`;
+    } else if (num >= 1) {
+      return `$${num.toFixed(decimals)}`;
+    } else if (num > 0) {
+      return `$${num.toFixed(6)}`;
+    }
+    return '$0.00';
   };
 
-  const formatMarketCap = (marketCap: number | null | undefined) => {
-    if (!marketCap) return 'N/A';
-    if (marketCap >= 1e9) return `$${(marketCap / 1e9).toFixed(2)}B`;
-    if (marketCap >= 1e6) return `$${(marketCap / 1e6).toFixed(2)}M`;
-    if (marketCap >= 1e3) return `$${(marketCap / 1e3).toFixed(2)}K`;
-    return `$${marketCap.toFixed(0)}`;
+  const formatPercentage = (percent: number | undefined): string => {
+    if (percent === undefined || percent === null) return 'N/A';
+    const sign = percent >= 0 ? '+' : '';
+    return `${sign}${percent.toFixed(2)}%`;
   };
 
-  const formatVolume = (volume: number | null | undefined) => {
-    if (!volume) return 'N/A';
-    if (volume >= 1e6) return `$${(volume / 1e6).toFixed(2)}M`;
-    if (volume >= 1e3) return `$${(volume / 1e3).toFixed(2)}K`;
-    return `$${volume.toFixed(0)}`;
-  };
-
-  const formatSupply = (supply: number | null | undefined) => {
-    if (!supply) return 'N/A';
-    if (supply >= 1e9) return `${(supply / 1e9).toFixed(2)}B`;
-    if (supply >= 1e6) return `${(supply / 1e6).toFixed(2)}M`;
-    if (supply >= 1e3) return `${(supply / 1e3).toFixed(2)}K`;
+  const formatSupply = (supply: number | undefined): string => {
+    if (supply === undefined || supply === null) return 'N/A';
+    
+    if (supply >= 1e9) {
+      return `${(supply / 1e9).toFixed(2)}B`;
+    } else if (supply >= 1e6) {
+      return `${(supply / 1e6).toFixed(2)}M`;
+    } else if (supply >= 1e3) {
+      return `${(supply / 1e3).toFixed(2)}K`;
+    }
     return supply.toFixed(0);
   };
 
-  const getPriceChangeColor = (change: number | null | undefined) => {
-    if (!change) return 'text-slate-500';
-    return change >= 0 ? 'text-green-600' : 'text-red-600';
-  };
-
-  const getPriceChangeIcon = (change: number | null | undefined) => {
-    if (!change) return null;
-    return change >= 0 ? 
-      <TrendingUp className="w-4 h-4" /> : 
-      <TrendingDown className="w-4 h-4" />;
-  };
+  const priceChangeColor = tokenMetadata.priceChange24h && tokenMetadata.priceChange24h >= 0 
+    ? 'text-green-600' : 'text-red-600';
+  
+  const PriceChangeIcon = tokenMetadata.priceChange24h && tokenMetadata.priceChange24h >= 0 
+    ? TrendingUp : TrendingDown;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-slate-50 to-slate-100 p-6 border-b border-slate-200">
+    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+      {/* Header with token info */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-slate-200">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center overflow-hidden">
-            {tokenMetadata.logoURI && !logoError ? (
-              <img 
-                src={tokenMetadata.logoURI} 
-                alt={`${tokenMetadata.symbol} logo`}
-                className="w-16 h-16 rounded-full object-cover"
-                onError={() => setLogoError(true)}
-              />
-            ) : (
-              <span className="text-2xl font-bold text-slate-600">
-                {tokenMetadata.symbol?.charAt(0) || '?'}
-              </span>
-            )}
-          </div>
+          {tokenMetadata.logoURI && (
+            <img 
+              src={tokenMetadata.logoURI} 
+              alt={`${tokenMetadata.symbol} logo`}
+              className="w-16 h-16 rounded-full border-2 border-white shadow-md"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          )}
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-slate-900 mb-1">
-              {tokenMetadata.name || 'Unknown Token'}
-            </h2>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-medium text-slate-600">
-                {tokenMetadata.symbol || 'N/A'}
-              </span>
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-2xl font-bold text-slate-900">{tokenMetadata.name}</h2>
               {tokenMetadata.rank && (
-                <span className="px-2 py-1 bg-slate-200 text-slate-700 text-xs font-medium rounded">
+                <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2 py-1 rounded-full">
                   #{tokenMetadata.rank}
                 </span>
               )}
+            </div>
+            <div className="flex items-center gap-2 text-slate-600">
+              <span className="font-mono text-lg">{tokenMetadata.symbol}</span>
+              <span className="text-sm">•</span>
+              <span className="text-sm font-mono">{tokenMetadata.mint.slice(0, 8)}...{tokenMetadata.mint.slice(-8)}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Price and market data */}
       <div className="p-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div>
-            <div className="text-sm text-slate-500 mb-1">Price</div>
+        {/* Market data availability notice */}
+        {(!tokenMetadata.price && !tokenMetadata.marketCap && !tokenMetadata.volume24h) && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800">
+              ⚠️ Market data temporarily unavailable. This may be due to network restrictions or API rate limits.
+            </p>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          {/* Current Price */}
+          <div className="bg-slate-50 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-slate-600 mb-1">Current Price</h3>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-semibold text-slate-900">
-                {formatPrice(tokenMetadata.price)}
+              <span className="text-2xl font-bold text-slate-900">
+                {tokenMetadata.price ? formatNumber(tokenMetadata.price, 6) : 'N/A'}
               </span>
-              {tokenMetadata.priceChange24h && (
-                <div className={`flex items-center gap-1 text-sm ${getPriceChangeColor(tokenMetadata.priceChange24h)}`}>
-                  {getPriceChangeIcon(tokenMetadata.priceChange24h)}
-                  {tokenMetadata.priceChange24h > 0 ? '+' : ''}{tokenMetadata.priceChange24h.toFixed(2)}%
+              {tokenMetadata.priceChange24h !== undefined && (
+                <div className={`flex items-center gap-1 ${priceChangeColor}`}>
+                  <PriceChangeIcon className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {formatPercentage(tokenMetadata.priceChange24h)}
+                  </span>
                 </div>
               )}
             </div>
           </div>
 
-          <div>
-            <div className="text-sm text-slate-500 mb-1">Market Cap</div>
-            <div className="text-lg font-semibold text-slate-900">
-              {formatMarketCap(tokenMetadata.marketCap)}
-            </div>
+          {/* Market Cap */}
+          <div className="bg-slate-50 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-slate-600 mb-1">Market Cap</h3>
+            <span className="text-xl font-bold text-slate-900">
+              {formatNumber(tokenMetadata.marketCap)}
+            </span>
           </div>
 
-          <div>
-            <div className="text-sm text-slate-500 mb-1">24h Volume</div>
-            <div className="text-lg font-semibold text-slate-900">
-              {formatVolume(tokenMetadata.volume24h)}
-            </div>
+          {/* 24h Volume */}
+          <div className="bg-slate-50 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-slate-600 mb-1">24h Volume</h3>
+            <span className="text-xl font-bold text-slate-900">
+              {formatNumber(tokenMetadata.volume24h)}
+            </span>
           </div>
 
-          <div>
-            <div className="text-sm text-slate-500 mb-1">Supply</div>
-            <div className="text-lg font-semibold text-slate-900">
+          {/* Total Supply */}
+          <div className="bg-slate-50 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-slate-600 mb-1">Total Supply</h3>
+            <span className="text-xl font-bold text-slate-900">
               {formatSupply(tokenMetadata.supply)}
-            </div>
+            </span>
           </div>
         </div>
 
         {/* Description */}
         {tokenMetadata.description && (
-          <div className="mt-6 pt-6 border-t border-slate-200">
-            <p className="text-sm text-slate-600 leading-relaxed line-clamp-3">
-              {tokenMetadata.description}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">About</h3>
+            <p className="text-slate-700 leading-relaxed">
+              {tokenMetadata.description.length > 300 
+                ? `${tokenMetadata.description.slice(0, 300)}...` 
+                : tokenMetadata.description}
             </p>
           </div>
         )}
 
-        {/* Links */}
-        {(tokenMetadata.website || tokenMetadata.twitter) && (
-          <div className="mt-6 pt-6 border-t border-slate-200">
+        {/* Social Links */}
+        {(tokenMetadata.website || tokenMetadata.twitter || tokenMetadata.telegram || tokenMetadata.discord) && (
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-3">Links</h3>
             <div className="flex flex-wrap gap-3">
               {tokenMetadata.website && (
                 <a
                   href={tokenMetadata.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
                 >
-                  <ExternalLink className="w-4 h-4" />
+                  <Globe className="w-4 h-4" />
                   Website
                 </a>
               )}
@@ -156,10 +169,32 @@ export function TokenInfoCard({ tokenMetadata }: TokenInfoCardProps) {
                   href={tokenMetadata.twitter}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-lg transition-colors"
                 >
-                  <ExternalLink className="w-4 h-4" />
+                  <Twitter className="w-4 h-4" />
                   Twitter
+                </a>
+              )}
+              {tokenMetadata.telegram && (
+                <a
+                  href={tokenMetadata.telegram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Telegram
+                </a>
+              )}
+              {tokenMetadata.discord && (
+                <a
+                  href={tokenMetadata.discord}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition-colors"
+                >
+                  <Users className="w-4 h-4" />
+                  Discord
                 </a>
               )}
             </div>

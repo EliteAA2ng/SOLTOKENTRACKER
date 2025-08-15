@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, AlertTriangle } from 'lucide-react';
+import { Search, AlertTriangle, Info } from 'lucide-react';
 import { COMMON_TOKENS } from '../config';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { 
@@ -56,22 +56,22 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
     setError('');
 
     if (!validateAddress(tokenMint)) {
-      setError('Invalid token address format');
+      setError('Invalid token mint address format. Expected 32-44 character base58 string.');
       return;
     }
 
     if (walletAddress && !validateAddress(walletAddress)) {
-      setError('Invalid wallet address format');
+      setError('Invalid wallet address format. Expected 32-44 character base58 string.');
       return;
     }
 
     if (!validateSeconds(seconds)) {
-      setError('Time period must be between 5 seconds and 24 hours');
+      setError('Lookback period must be between 5 and 86400 seconds (24 hours).');
       return;
     }
 
     if (!validateHeliusKey(heliusKey)) {
-      setError('Invalid API key format');
+      setError('Invalid Helius API key format. Expected UUID format.');
       return;
     }
 
@@ -131,22 +131,22 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   const isSecondsValid = validateSeconds(seconds);
 
   return (
-    <div className="min-h-screen flex items-start justify-center p-4 pt-24">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Token Address */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-slate-900 block">
-              Token Address
+          {/* Token Mint Address */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 block">
+              Token Mint Address <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={tokenMint}
                 onChange={(e) => handleTokenMintChange(e.target.value)}
-                placeholder="Token mint address"
-                className="w-full h-12 px-4 pr-10 text-sm border border-slate-300 rounded-lg focus:border-violet-500 focus:ring-2 focus:ring-violet-100 outline-none transition-all placeholder:text-slate-400 font-mono bg-white"
+                placeholder="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
                 disabled={loading}
                 required
               />
@@ -158,14 +158,17 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 </div>
               )}
             </div>
-            {/* Quick Select Tokens */}
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(COMMON_TOKENS).slice(0, 6).map(([symbol, address]) => (
+            <p className="text-xs text-slate-500">
+              Enter any Solana SPL token mint address (e.g., USDC, BONK, USDT)
+            </p>
+            {/* Quick Select Common Tokens */}
+            <div className="flex flex-wrap gap-2 mt-2">
+              {Object.entries(COMMON_TOKENS).slice(0, 4).map(([symbol, address]) => (
                 <button
                   key={symbol}
                   type="button"
                   onClick={() => handleTokenSelect(address)}
-                  className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors"
+                  className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors"
                   disabled={loading}
                 >
                   {symbol}
@@ -175,18 +178,18 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
           </div>
 
           {/* Wallet Address */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-slate-900 block">
-              Wallet Address <span className="text-slate-500 text-xs font-normal">(Optional)</span>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 block">
+              Wallet Address (Optional)
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={walletAddress}
                 onChange={(e) => handleWalletAddressChange(e.target.value)}
-                placeholder={isWalletConnected ? "Connected wallet" : "Filter by wallet address"}
-                className={`w-full h-12 px-4 pr-10 text-sm border border-slate-300 rounded-lg focus:border-violet-500 focus:ring-2 focus:ring-violet-100 outline-none transition-all placeholder:text-slate-400 font-mono ${
-                  isWalletConnected ? 'bg-slate-50 cursor-not-allowed' : 'bg-white'
+                placeholder={isWalletConnected ? "Connected via wallet" : "Filter by specific wallet address"}
+                className={`w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono ${
+                  isWalletConnected ? 'bg-slate-50 cursor-not-allowed' : ''
                 }`}
                 disabled={loading || isWalletConnected}
               />
@@ -198,28 +201,68 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 </div>
               )}
             </div>
+            <p className="text-xs text-slate-500">
+              {isWalletConnected 
+                ? 'Wallet connected. Disconnect from header to enter address manually.'
+                : 'Leave empty to track all transfers, or enter address to filter'}
+            </p>
           </div>
 
-          {/* Time Period */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-slate-900 block">
-              Time Period
+          {/* Helius API Key */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 block">
+              Helius API Key (Optional)
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={heliusKey}
+                onChange={(e) => handleHeliusKeyChange(e.target.value)}
+                placeholder="Default key provided - enter your own for higher limits"
+                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
+                disabled={loading}
+              />
+              {isHeliusKeyValid !== null && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    isHeliusKeyValid ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">
+              Default key included. Get your own for higher rate limits at{' '}
+              <a
+                href="https://helius.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-violet-600 hover:text-violet-700"
+              >
+                helius.xyz
+              </a>
+            </p>
+          </div>
+
+          {/* Lookback Period */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 block">
+              Lookback Period
             </label>
             <div className="grid grid-cols-4 gap-2 mb-3">
               {[
                 { label: '30s', value: 30 },
-                { label: '10m', value: 600 },
-                { label: '1h', value: 3600 },
-                { label: '24h', value: 86400 }
+                { label: '10min', value: 600 },
+                { label: '1hr', value: 3600 },
+                { label: '24hr', value: 86400 }
               ].map(({ label, value }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => handleSecondsChange(value)}
-                  className={`px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                     seconds === value
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-violet-100 text-violet-700 border border-violet-200'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
                   }`}
                   disabled={loading}
                 >
@@ -234,7 +277,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 onChange={(e) => handleSecondsChange(parseInt(e.target.value) || 600)}
                 min="5"
                 max="86400"
-                className="w-full h-12 px-4 pr-10 text-sm border border-slate-300 rounded-lg focus:border-violet-500 focus:ring-2 focus:ring-violet-100 outline-none transition-all bg-white"
+                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all"
                 disabled={loading}
               />
               {isSecondsValid !== null && (
@@ -245,37 +288,16 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* API Key */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium text-slate-900 block">
-              API Key <span className="text-slate-500 text-xs font-normal">(Optional)</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={heliusKey}
-                onChange={(e) => handleHeliusKeyChange(e.target.value)}
-                placeholder="Default provided"
-                className="w-full h-12 px-4 pr-10 text-sm border border-slate-300 rounded-lg focus:border-violet-500 focus:ring-2 focus:ring-violet-100 outline-none transition-all placeholder:text-slate-400 font-mono bg-white"
-                disabled={loading}
-              />
-              {isHeliusKeyValid !== null && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    isHeliusKeyValid ? 'bg-green-500' : 'bg-red-500'
-                  }`}></div>
-                </div>
-              )}
-            </div>
+            <p className="text-xs text-slate-500">
+              How far back to look for transfers (5 seconds to 24 hours)
+            </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700">{error}</p>
               </div>
             </div>
@@ -285,7 +307,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
           <button
             type="submit"
             disabled={loading || !tokenMint}
-            className="w-full h-12 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:from-slate-400 disabled:to-slate-400 text-white font-medium rounded-lg transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full h-12 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:from-violet-400 disabled:to-purple-400 text-white font-medium rounded-xl transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -295,11 +317,25 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
             ) : (
               <>
                 <Search className="w-4 h-4" />
-                <span>Analyze Transfers</span>
+                <span>Analyze Token</span>
               </>
             )}
           </button>
         </form>
+
+        {/* Info Section */}
+        <div className="mt-8 p-4 bg-slate-50 rounded-xl">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-slate-600 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-slate-600 space-y-1">
+              <p>• Tracks all transfers for any SPL token</p>
+              <p>• Optional wallet filtering for specific addresses</p>
+              <p>• Real-time streaming of new transfers</p>
+              <p>• Comprehensive token information and market data</p>
+              <p>• Connect wallet from header for easy filtering</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

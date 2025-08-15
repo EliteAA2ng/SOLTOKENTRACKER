@@ -27,17 +27,17 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo and Title */}
           <div className="flex items-center gap-3">
-            <div className="inline-flex items-center justify-center w-10 h-10 bg-slate-900 rounded-lg">
+            <div className="inline-flex items-center justify-center w-10 h-10 bg-slate-900 rounded-xl">
               <div className="w-6 h-6 bg-gradient-to-br from-violet-400 to-purple-500 rounded-md flex items-center justify-center">
                 <Search className="w-3 h-3 text-white" />
               </div>
             </div>
             <div>
               <h1 className="text-lg font-semibold text-slate-900">
-                Token Tracker
+                Solana Token Tracker
               </h1>
-              <p className="text-xs text-slate-500">
-                Solana blockchain analytics
+              <p className="text-xs text-slate-600">
+                Track your token transfers on Solana blockchain
               </p>
             </div>
           </div>

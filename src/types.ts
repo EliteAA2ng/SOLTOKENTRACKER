@@ -26,6 +26,7 @@ export interface TokenMetadata {
   volume24h?: number;
   supply?: number;
   rank?: number;
+  liquidity?: number;
   description?: string;
   website?: string;
   twitter?: string;

@@ -60,7 +60,8 @@ export class SolanaService {
       await Promise.allSettled([
         this.fetchJupiterMetadata(mintAddress, metadata),
         this.fetchCoinGeckoMetadata(mintAddress, metadata),
-        this.fetchDexScreenerMetadata(mintAddress, metadata)
+        this.fetchDexScreenerMetadata(mintAddress, metadata),
+        this.fetchBirdeyeMetadata(mintAddress, metadata)
       ]);
 
       // Fallback symbol if still unknown
@@ -177,6 +178,58 @@ export class SolanaService {
     } catch (error) {
       console.warn('Failed to fetch token metadata from DexScreener:', error);
       // DexScreener API is optional - continue without it
+    }
+  }
+
+  private async fetchBirdeyeMetadata(mintAddress: string, metadata: TokenMetadata): Promise<void> {
+    try {
+      // Get Birdeye API key from environment or use demo key
+      const apiKey = (import.meta as any).env?.VITE_BIRDEYE_API_KEY || 'demo';
+      
+      const response = await fetch(
+        `https://public-api.birdeye.so/defi/token_overview?address=${mintAddress}`,
+        {
+          headers: {
+            'X-API-KEY': apiKey,
+            'Accept': 'application/json'
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          const tokenData = data.data;
+          
+          // Basic token info
+          metadata.name = tokenData.name || metadata.name;
+          metadata.symbol = tokenData.symbol || metadata.symbol;
+          metadata.logoURI = tokenData.logoURI || metadata.logoURI;
+          
+          // Market data
+          metadata.price = tokenData.price || metadata.price;
+          metadata.priceChange24h = tokenData.priceChange24h || metadata.priceChange24h;
+          metadata.marketCap = tokenData.mc || metadata.marketCap;
+          metadata.volume24h = tokenData.v24h || metadata.volume24h;
+          
+          // Additional data from Birdeye
+          if (tokenData.liquidity) {
+            metadata.liquidity = tokenData.liquidity;
+          }
+        }
+      } else if (response.status === 429) {
+        console.warn('Birdeye API rate limited - skipping market data');
+      } else if (response.status === 401 || response.status === 403) {
+        console.warn('Birdeye API authentication required - using demo key limitations');
+      } else if (response.status === 404) {
+        console.warn('Token not found on Birdeye - this is normal for newer tokens');
+      } else {
+        console.warn(`Birdeye API error ${response.status} - skipping market data`);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch token metadata from Birdeye:', error);
+      // Birdeye API is optional - continue without it
     }
   }
 
