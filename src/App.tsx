@@ -129,24 +129,21 @@ function TokenTracker() {
   };
 
   const handleReset = () => {
-    // Save current appState to localStorage before resetting
-    // This ensures the form data is preserved when going back
+    // Save current appState to sessionStorage before resetting (session-only persistence)
     if (appState) {
       const formData = {
         tokenMint: appState.tokenMint,
         walletAddress: appState.walletAddress || '',
         heliusKey: appState.heliusKey,
         seconds: appState.seconds,
-        walletAddressSource: appState.walletAddressSource // Use the existing source
+        walletAddressSource: appState.walletAddressSource // Save source
       };
-      
       try {
-        localStorage.setItem('solana-tracker-form', JSON.stringify(formData));
+        sessionStorage.setItem('solana-tracker-form', JSON.stringify(formData));
       } catch (error) {
-        console.warn('Failed to save form data before reset:', error);
+        console.warn('Failed to save form data to sessionStorage before reset:', error);
       }
     }
-    
     setAppState(null);
     setStreamTransfers([]);
     setStreamStart(null);

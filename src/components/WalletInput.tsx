@@ -18,20 +18,21 @@ interface WalletInputProps {
 // Form persistence helper
 const FORM_STORAGE_KEY = 'solana-tracker-form';
 
+// Change from localStorage to sessionStorage for session-only persistence
 const saveFormData = (data: any) => {
   try {
-    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
+    sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
   } catch (error) {
-    console.warn('Failed to save form data:', error);
+    console.warn('Failed to save form data to sessionStorage:', error);
   }
 };
 
 const loadFormData = () => {
   try {
-    const saved = localStorage.getItem(FORM_STORAGE_KEY);
+    const saved = sessionStorage.getItem(FORM_STORAGE_KEY);
     return saved ? JSON.parse(saved) : {};
   } catch (error) {
-    console.warn('Failed to load form data:', error);
+    console.warn('Failed to load form data from sessionStorage:', error);
     return {};
   }
 };
@@ -214,9 +215,11 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
                     console.log('🔄 Manual reset triggered');
                     console.log('Before reset:', {
                       sessionStorage: sessionStorage.getItem('walletAutoConnectAttempted'),
+                      formData: sessionStorage.getItem(FORM_STORAGE_KEY),
                       localStorage: localStorage.getItem('walletName')
                     });
                     sessionStorage.removeItem('walletAutoConnectAttempted');
+                    sessionStorage.removeItem(FORM_STORAGE_KEY); // Clear form data from session
                     localStorage.removeItem('walletName');
                     console.log('🧹 Cleared session and local storage');
                     setTimeout(() => {
@@ -242,6 +245,7 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
               </div>
               <div className="text-xs text-gray-500">
                 Session: {sessionStorage.getItem('walletAutoConnectAttempted') || 'not set'} | 
+                Form: {sessionStorage.getItem(FORM_STORAGE_KEY) ? 'saved' : 'none'} |
                 Wallet: {localStorage.getItem('walletName') || 'none'}
               </div>
             </div>
