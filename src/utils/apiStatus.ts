@@ -37,6 +37,13 @@ export async function checkApiStatus(): Promise<ApiStatus[]> {
         // Check if user has provided their own API key
         const apiKey = (import.meta as any).env?.VITE_BIRDEYE_API_KEY;
         
+        // Debug logging
+        console.log('🔍 Birdeye API Key Check:', {
+          hasImportMeta: !!(import.meta as any).env,
+          envKeys: Object.keys((import.meta as any).env || {}),
+          apiKey: apiKey ? `${apiKey.substring(0, 8)}...` : 'undefined'
+        });
+        
         if (!apiKey || apiKey === 'demo') {
           // Return a special status for missing API key
           return {
