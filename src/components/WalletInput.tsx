@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, AlertTriangle, Info } from 'lucide-react';
 import { COMMON_TOKENS, DEFAULT_CONFIG } from '../config';
 import { WalletConnection } from './WalletConnection';
@@ -9,84 +9,46 @@ interface WalletInputProps {
     walletAddress?: string;
     heliusKey: string;
     seconds: number;
-    walletAddressSource?: 'manual' | 'connected' | null;
   }) => void;
   loading: boolean;
-  isAutoConnecting?: boolean;
 }
 
-// Remove localStorage functions - we'll only use session-based state management
-// const saveFormData = (data: any) => { /* ... */ };
-// const loadFormData = () => { /* ... */ };
+// Form persistence helper
+const FORM_STORAGE_KEY = 'solana-tracker-form';
 
-export default function WalletInput({ onSubmit, loading, isAutoConnecting = false }: WalletInputProps) {
-  // Remove savedData loading from localStorage
-  const [tokenMint, setTokenMint] = useState('');
-  const [walletAddress, setWalletAddress] = useState('');
-  const [heliusKey, setHeliusKey] = useState('');
-  const [seconds, setSeconds] = useState(600);
+const saveFormData = (data: any) => {
+  try {
+    localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.warn('Failed to save form data:', error);
+  }
+};
+
+const loadFormData = () => {
+  try {
+    const saved = localStorage.getItem(FORM_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : {};
+  } catch (error) {
+    console.warn('Failed to load form data:', error);
+    return {};
+  }
+};
+
+export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
+  const savedData = loadFormData();
+  
+  const [tokenMint, setTokenMint] = useState(savedData.tokenMint || '');
+  const [walletAddress, setWalletAddress] = useState(savedData.walletAddress || '');
+  const [heliusKey, setHeliusKey] = useState(savedData.heliusKey || DEFAULT_CONFIG.defaultHeliusKey);
+  const [seconds, setSeconds] = useState(savedData.seconds || 600);
   const [error, setError] = useState('');
-  const [showRestoredMessage, setShowRestoredMessage] = useState(false);
-  const [walletAddressSource, setWalletAddressSource] = useState<'manual' | 'connected' | null>(null);
+  const [isConnectingWallet, setIsConnectingWallet] = useState(false);
 
-  // Check if we have data from navigation back (passed via handleReset in App.tsx)
+  // Save form data whenever fields change
   useEffect(() => {
-    // Check if there's temporary form data from navigation back
-    const tempFormData = sessionStorage.getItem('temp-form-data');
-    if (tempFormData) {
-      try {
-        const saved = JSON.parse(tempFormData);
-        let hasRestoredData = false;
-        
-        if (saved.tokenMint) { setTokenMint(saved.tokenMint); hasRestoredData = true; }
-        if (saved.walletAddress) { setWalletAddress(saved.walletAddress); hasRestoredData = true; }
-        if (saved.walletAddressSource) { setWalletAddressSource(saved.walletAddressSource); }
-        if (saved.heliusKey && saved.heliusKey !== DEFAULT_CONFIG.defaultHeliusKey) { setHeliusKey(saved.heliusKey); hasRestoredData = true; }
-        if (saved.seconds && saved.seconds !== 600) { setSeconds(saved.seconds); hasRestoredData = true; }
-        
-        if (hasRestoredData) {
-          setShowRestoredMessage(true);
-          setTimeout(() => setShowRestoredMessage(false), 3000);
-        }
-        
-        // Clear the temporary data after using it
-        sessionStorage.removeItem('temp-form-data');
-      } catch (error) {
-        console.warn('Failed to load temporary form data:', error);
-      }
-    }
-  }, []);
-
-  // Remove the localStorage saving useEffect - no automatic persistence
-
-  // Handle wallet connection - allow auto-connect during initialization
-  const handleWalletSelect = (address: string) => {
-    // During form initialization, allow wallet connection to override any saved state
-    // After initialization, only override if not manually typing
-    if (walletAddressSource === 'manual' && address !== '') {
-      // Don't override manual input with wallet connection (unless during initialization)
-      return;
-    }
-    
-    setWalletAddress(address);
-    // If wallet provides an address, it's connected; if empty, it's disconnected
-    setWalletAddressSource(address ? 'connected' : null);
-  };
-
-  // Handle manual wallet address input
-  const handleManualWalletInput = (address: string) => {
-    setWalletAddress(address);
-    
-    // Debounce the source setting to prevent conflicts with wallet connection
-    setTimeout(() => {
-      // If user is manually typing, mark as manual input
-      if (address.trim() !== '') {
-        setWalletAddressSource('manual');
-      } else {
-        setWalletAddressSource(null);
-      }
-    }, 100); // Small delay to prevent race conditions
-  };
+    const formData = { tokenMint, walletAddress, heliusKey, seconds };
+    saveFormData(formData);
+  }, [tokenMint, walletAddress, heliusKey, seconds]);
 
   const validateAddress = (addr: string): boolean => {
     if (!addr.trim()) return false;
@@ -98,6 +60,13 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent submission if wallet is being connected
+    if (isConnectingWallet) {
+      console.log('Form submission blocked: wallet connection in progress');
+      return;
+    }
+    
     setError('');
 
     if (!validateAddress(tokenMint)) {
@@ -105,8 +74,7 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
       return;
     }
 
-    // Only validate wallet address if it's not empty (since it's optional)
-    if (walletAddress && walletAddress.trim() && !validateAddress(walletAddress.trim())) {
+    if (walletAddress && !validateAddress(walletAddress)) {
       setError('Invalid wallet address format. Expected 32-44 character base58 string.');
       return;
     }
@@ -118,17 +86,21 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
 
     // Use the provided heliusKey or fall back to default
     const finalHeliusKey = heliusKey.trim() || DEFAULT_CONFIG.defaultHeliusKey;
-    
-    // Clean up wallet address - if it's empty or just whitespace, pass empty string
-    const cleanWalletAddress = walletAddress.trim() || '';
-    
-    onSubmit({ 
-      tokenMint: tokenMint.trim(), 
-      walletAddress: cleanWalletAddress, 
-      heliusKey: finalHeliusKey, 
-      seconds,
-      walletAddressSource 
-    });
+    onSubmit({ tokenMint: tokenMint.trim(), walletAddress: walletAddress.trim(), heliusKey: finalHeliusKey, seconds });
+  };
+
+  // Handle wallet selection with proper state management
+  const handleWalletSelect = useCallback((address: string) => {
+    setIsConnectingWallet(true);
+    setWalletAddress(address);
+    // Reset the connecting state after a brief delay
+    setTimeout(() => setIsConnectingWallet(false), 100);
+  }, []);
+
+  // Handle token selection
+  const handleTokenSelect = (address: string) => {
+    setTokenMint(address);
+    setError(''); // Clear any existing errors
   };
 
   return (
@@ -147,65 +119,6 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
           <p className="text-slate-600 text-sm leading-relaxed">
             Comprehensive on-chain analysis for any Solana SPL token transfers
           </p>
-          
-          {/* Auto-connecting indicator */}
-          {isAutoConnecting && (
-            <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-              <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
-              <span>Auto-connecting to wallet...</span>
-            </div>
-          )}
-          
-          {/* Form data restored indicator */}
-          {showRestoredMessage && (
-            <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-              <div className="w-4 h-4 text-green-600">✓</div>
-              <span>Previous form data restored</span>
-            </div>
-          )}
-          
-          {/* Debug: Auto-connect trigger (only in development) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 space-y-2">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log('🔄 Manual reset triggered');
-                    console.log('Before reset:', {
-                      sessionStorageAttempted: sessionStorage.getItem('walletAutoConnectAttempted'),
-                      sessionStorageWallet: sessionStorage.getItem('walletName')
-                    });
-                    sessionStorage.removeItem('walletAutoConnectAttempted');
-                    sessionStorage.removeItem('walletName');
-                    console.log('🧹 Cleared session storage');
-                    setTimeout(() => {
-                      console.log('🔄 Reloading page...');
-                      window.location.reload();
-                    }, 500);
-                  }}
-                  className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded"
-                >
-                  🔄 Reset & Test Auto-Connect
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log('🚀 Manual auto-connect trigger');
-                    // Trigger a custom event that AutoConnectWallet can listen to
-                    window.dispatchEvent(new CustomEvent('forceAutoConnect'));
-                  }}
-                  className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded"
-                >
-                  🚀 Force Auto-Connect Now
-                </button>
-              </div>
-              <div className="text-xs text-gray-500">
-                Session Attempted: {sessionStorage.getItem('walletAutoConnectAttempted') || 'not set'} | 
-                Session Wallet: {sessionStorage.getItem('walletName') || 'none'}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Form */}
@@ -223,6 +136,7 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
                 placeholder="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
                 className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
                 disabled={loading}
+                required
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 <div className="w-2 h-2 bg-red-400 rounded-full"></div>
@@ -237,7 +151,7 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
                 <button
                   key={symbol}
                   type="button"
-                  onClick={() => setTokenMint(address)}
+                  onClick={() => handleTokenSelect(address)}
                   className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors"
                   disabled={loading}
                 >
@@ -254,44 +168,26 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
             </label>
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={walletAddress}
-                  onChange={(e) => handleManualWalletInput(e.target.value)} // Use manual input handler
-                  placeholder={
-                    walletAddressSource === 'connected' 
-                      ? 'Wallet address (from connected wallet)' 
-                      : 'Filter by specific wallet address'
-                  }
-                  className={`w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono ${
-                    walletAddressSource === 'connected' 
-                      ? 'bg-green-50 border-green-200 cursor-not-allowed' 
-                      : 'bg-white'
-                  }`}
-                  disabled={loading || walletAddressSource === 'connected'} // Disable when wallet is connected
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    walletAddressSource === 'connected' 
-                      ? 'bg-green-400' 
-                      : walletAddressSource === 'manual'
-                      ? 'bg-blue-400'
-                      : 'bg-slate-300'
-                  }`}></div>
-                </div>
+              <input
+                type="text"
+                value={walletAddress}
+                onChange={(e) => setWalletAddress(e.target.value)}
+                placeholder="Filter by specific wallet address"
+                className="w-full h-12 px-4 pr-10 text-sm border border-slate-200 rounded-xl focus:border-violet-500 focus:ring-4 focus:ring-violet-50 outline-none transition-all placeholder:text-slate-400 font-mono"
+                disabled={loading || isConnectingWallet}
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+              </div>
               </div>
               <WalletConnection 
                 onWalletSelect={handleWalletSelect}
-                isAutoConnecting={isAutoConnecting}
+                currentAddress={walletAddress}
+                disabled={loading}
               />
             </div>
             <p className="text-xs text-slate-500">
-              {walletAddressSource === 'connected'
-                ? '🟢 Connected wallet address (input disabled - disconnect wallet to enable manual entry)'
-                : walletAddressSource === 'manual'
-                ? '🔵 Manually entered address (will be maintained)'
-                : 'Connect your wallet or manually enter an address to filter transfers'
-              }
+              Connect your wallet or manually enter an address to filter transfers
             </p>
           </div>
 
@@ -314,11 +210,19 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
               </div>
             </div>
             <p className="text-xs text-slate-500">
-              Default key included. Get your own for higher rate limits at <a href="https://helius.xyz" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:text-violet-700">helius.xyz</a>
+              Default key included. Get your own for higher rate limits at{' '}
+              <a
+                href="https://helius.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-violet-600 hover:text-violet-700"
+              >
+                helius.xyz
+              </a>
             </p>
           </div>
 
-          {/* Lookback Period (seconds) */}
+          {/* Lookback Period */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 block">
               Lookback Period
@@ -363,27 +267,34 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
 
           {/* Error Message */}
           {error && (
-            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
             </div>
           )}
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading || !tokenMint.trim()}
-            className="w-full h-12 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+            disabled={loading || isConnectingWallet || !tokenMint}
+            className="w-full h-12 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:from-violet-400 disabled:to-purple-400 text-white font-medium rounded-xl transition-all disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Analyzing...
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Analyzing...</span>
+              </>
+            ) : isConnectingWallet ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Connecting Wallet...</span>
               </>
             ) : (
               <>
                 <Search className="w-4 h-4" />
-                Analyze Transfers
+                <span>Analyze Token</span>
               </>
             )}
           </button>
@@ -393,14 +304,11 @@ export default function WalletInput({ onSubmit, loading, isAutoConnecting = fals
         <div className="mt-8 p-4 bg-slate-50 rounded-xl">
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-slate-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-slate-600 space-y-2">
-              <p className="font-medium">How it works:</p>
-              <ul className="space-y-1 text-xs">
-                <li>• Analyzes on-chain token transfers for any SPL token</li>
-                <li>• Shows both incoming and outgoing transfers</li>
-                <li>• Uses Helius RPC for enhanced performance and reliability</li>
-                <li>• Shorter lookback periods provide faster, more focused results</li>
-              </ul>
+            <div className="text-xs text-slate-600 space-y-1">
+              <p>• Tracks all transfers for any SPL token</p>
+              <p>• Optional wallet filtering for specific addresses</p>
+              <p>• Real-time streaming of new transfers</p>
+              <p>• Comprehensive token information and market data</p>
             </div>
           </div>
         </div>

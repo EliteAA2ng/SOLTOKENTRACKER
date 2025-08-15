@@ -1,29 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-  CloverWalletAdapter,
-  Coin98WalletAdapter,
-  LedgerWalletAdapter,
-  MathWalletAdapter,
-  TorusWalletAdapter,
-} from '@solana/wallet-adapter-wallets';
 import WalletInput from './components/WalletInput';
 import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
 import { ApiStatusModal } from './components/ApiStatusModal';
-import { AutoConnectWallet } from './components/AutoConnectWallet';
 import { SolanaService } from './services/solanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
 import { ArrowLeft, AlertCircle, Activity } from 'lucide-react';
-
-// Import wallet adapter CSS
-import '@solana/wallet-adapter-react-ui/styles.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,7 +24,6 @@ interface AppState {
   walletAddress?: string;
   heliusKey: string;
   seconds: number;
-  walletAddressSource?: 'manual' | 'connected' | null;
 }
 
 function TokenTracker() {
@@ -49,15 +32,7 @@ function TokenTracker() {
   const [streamStart, setStreamStart] = useState<number | null>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [showApiStatus, setShowApiStatus] = useState(false);
-  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
   const isStreaming = useRef(false);
-
-  // Auto-connect wallet component with state management
-  const autoConnectComponent = (
-    <AutoConnectWallet 
-      onConnectingChange={setIsAutoConnecting}
-    />
-  );
 
   const { data: tokenMetadata, isLoading: isLoadingMetadata } = useQuery({
     queryKey: ['tokenMetadata', appState?.tokenMint],
@@ -117,34 +92,16 @@ function TokenTracker() {
     walletAddress?: string;
     heliusKey: string;
     seconds: number;
-    walletAddressSource?: 'manual' | 'connected' | null;
   }) => {
     setAppState({ 
       tokenMint: data.tokenMint, 
       walletAddress: data.walletAddress || undefined, 
       heliusKey: data.heliusKey, 
-      seconds: data.seconds,
-      walletAddressSource: data.walletAddressSource
+      seconds: data.seconds 
     });
   };
 
   const handleReset = () => {
-    // Save current appState to sessionStorage only for navigation back (not persistent)
-    if (appState) {
-      const formData = {
-        tokenMint: appState.tokenMint,
-        walletAddress: appState.walletAddress || '',
-        heliusKey: appState.heliusKey,
-        seconds: appState.seconds,
-        walletAddressSource: appState.walletAddressSource
-      };
-      try {
-        // Use sessionStorage with temp key - only for this navigation back
-        sessionStorage.setItem('temp-form-data', JSON.stringify(formData));
-      } catch (error) {
-        console.warn('Failed to save temporary form data:', error);
-      }
-    }
     setAppState(null);
     setStreamTransfers([]);
     setStreamStart(null);
@@ -153,33 +110,19 @@ function TokenTracker() {
   };
 
   if (!appState) {
-    return (
-      <>
-        {autoConnectComponent}
-        <WalletInput 
-          onSubmit={handleAnalyze} 
-          loading={isLoading}
-          isAutoConnecting={isAutoConnecting}
-        />
-      </>
-    );
+    return <WalletInput onSubmit={handleAnalyze} loading={isLoading} />;
   }
 
   const combinedTransfers = (streamTransfers.length ? streamTransfers : []).concat(transfers || []);
 
   return (
-    <>
-      {autoConnectComponent}
-      <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <button
-                onClick={handleReset}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-              >
+              <button onClick={handleReset} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
@@ -189,13 +132,10 @@ function TokenTracker() {
                   {tokenMetadata?.name || 'Token'} Transfer Analytics
                 </h1>
                 <p className="text-sm text-slate-600">
-                  {appState.walletAddress 
-                    ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` 
-                    : `All ${tokenMetadata?.symbol || 'Token'} transfers`
-                  }
+                  {appState.walletAddress ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : `All ${tokenMetadata?.symbol || 'Token'} transfers`}
                 </p>
               </div>
-            </div>
+              </div>
 
             <div className="flex items-center gap-3 text-sm text-slate-600">
               <button
@@ -219,7 +159,16 @@ function TokenTracker() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Loading skeleton for TokenInfoCard */}
+        {isTracking && (
+          <div className="flex items-center justify-center mb-4">
+            <div className="inline-flex items-center gap-2 text-slate-600 text-sm">
+              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+              <span>Tracking...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Token Information Card */}
         {isLoadingMetadata && (
           <div className="mb-8">
             <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden animate-pulse">
@@ -245,20 +194,9 @@ function TokenTracker() {
             </div>
           </div>
         )}
-
-        {/* Token Information Card */}
         {tokenMetadata && (
           <div className="mb-8">
             <TokenInfoCard tokenMetadata={tokenMetadata} />
-          </div>
-        )}
-
-        {isTracking && (
-          <div className="flex items-center justify-center mb-4">
-            <div className="inline-flex items-center gap-2 text-slate-600 text-sm">
-              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
-              <span>Tracking...</span>
-            </div>
           </div>
         )}
 
@@ -271,9 +209,7 @@ function TokenTracker() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-slate-900 mb-2">Analysis Warning</h3>
-                  <p className="text-slate-700 mb-2">
-                    {error instanceof Error ? error.message : 'An issue occurred while fetching transfer data.'}
-                  </p>
+                  <p className="text-slate-700 mb-2">{error instanceof Error ? error.message : 'An issue occurred while fetching transfer data.'}</p>
                   {streamTransfers.length > 0 && (
                     <p className="text-slate-600 text-sm">Streaming results are still coming in below.</p>
                   )}
@@ -290,17 +226,10 @@ function TokenTracker() {
               <h2 className="text-xl font-bold text-slate-900">Recent Transfers</h2>
               <p className="text-sm text-slate-600">
                 {combinedTransfers.length} transfer{combinedTransfers.length !== 1 ? 's' : ''} found
-                {appState.walletAddress 
-                  ? ` for wallet ${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` 
-                  : ''
-                }
+                {appState.walletAddress ? ` for wallet ${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : ''}
               </p>
             </div>
-            <TransferList 
-              transfers={combinedTransfers} 
-              tokenMetadata={tokenMetadata!} 
-              walletAddress={appState.walletAddress} 
-            />
+            <TransferList transfers={combinedTransfers} tokenMetadata={tokenMetadata!} walletAddress={appState.walletAddress} />
           </div>
         )}
 
@@ -312,44 +241,13 @@ function TokenTracker() {
       {/* API Status Modal */}
       <ApiStatusModal isOpen={showApiStatus} onClose={() => setShowApiStatus(false)} />
     </div>
-    </>
   );
 }
 
 export default function App() {
-  // The network can be set to 'devnet', 'testnet', or 'mainnet-beta'
-  const network = WalletAdapterNetwork.Mainnet;
-  
-  // You can also provide a custom RPC endpoint
-  const endpoint = PUBLIC_RPC_URL;
-
-  // Initialize all the wallets you want to support
-  const wallets = [
-    new PhantomWalletAdapter(),
-    new SolflareWalletAdapter({ network }),
-    new CloverWalletAdapter(),
-    new Coin98WalletAdapter(),
-    new LedgerWalletAdapter(),
-    new MathWalletAdapter(),
-    new TorusWalletAdapter(),
-  ];
-
   return (
-    <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider 
-        wallets={wallets} 
-        autoConnect={false}
-        onError={(error) => {
-          // Log wallet errors but don't show them to users unless critical
-          console.log('Wallet error:', error);
-        }}
-      >
-        <WalletModalProvider>
-          <QueryClientProvider client={queryClient}>
-            <TokenTracker />
-          </QueryClientProvider>
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
+    <QueryClientProvider client={queryClient}>
+      <TokenTracker />
+    </QueryClientProvider>
   );
 }
