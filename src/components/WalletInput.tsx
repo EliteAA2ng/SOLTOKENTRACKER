@@ -47,7 +47,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
   };
 
   const validateSeconds = (secs: number): boolean => {
-    return secs >= 5 && secs <= 86400;
+    return secs >= 5 && secs <= 86400; // Allow up to 24 hours
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -78,7 +78,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
     // Use the provided heliusKey
     onSubmit({ 
       tokenMint: tokenMint.trim(), 
-      walletAddress: walletAddress.trim(), 
+      walletAddress: walletAddress.trim() || undefined, // Convert empty string to undefined
       heliusKey: heliusKey.trim(), 
       seconds 
     });
@@ -159,7 +159,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               )}
             </div>
             <p className="text-xs text-slate-500">
-              Enter any Solana SPL token mint address (e.g., USDC, BONK, USDT)
+              Enter any Solana SPL token mint address (e.g., USDC, USDT, SOL, BONK)
             </p>
             {/* Quick Select Common Tokens */}
             <div className="flex flex-wrap gap-2 mt-2">
@@ -248,7 +248,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
             <label className="text-sm font-medium text-slate-700 block">
               Lookback Period
             </label>
-            <div className="grid grid-cols-4 gap-2 mb-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
               {[
                 { label: '30s', value: 30 },
                 { label: '10min', value: 600 },
@@ -289,7 +289,7 @@ export default function WalletInput({ onSubmit, loading }: WalletInputProps) {
               )}
             </div>
             <p className="text-xs text-slate-500">
-              How far back to look for transfers (5 seconds to 24 hours)
+              How far back to look for transfers (5 seconds to 72 hours)
             </p>
           </div>
 

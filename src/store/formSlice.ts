@@ -13,7 +13,7 @@ const initialState: FormState = {
   tokenMint: COMMON_TOKENS.USDC, // Set USDC as default
   walletAddress: '',
   heliusKey: DEFAULT_CONFIG.defaultHeliusKey,
-  seconds: 600, // Default to 10 minutes
+  seconds: 300, // Reduced from 600 to 5 minutes for better performance
   isWalletConnected: false,
 };
 

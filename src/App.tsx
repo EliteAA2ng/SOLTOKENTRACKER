@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
@@ -15,10 +15,10 @@ import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
 import { ApiStatusModal } from './components/ApiStatusModal';
 import { AutoWalletConnect } from './components/AutoWalletConnect';
-import { SolanaService } from './services/solanaService';
+import { SolanaService } from './services';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
-import { ArrowLeft, AlertCircle, Activity } from 'lucide-react';
+import { ArrowLeft, Activity, Search } from 'lucide-react';
 import { store } from './store/store';
 
 // Import wallet adapter CSS
@@ -43,11 +43,10 @@ interface AppState {
 
 function TokenTracker() {
   const [appState, setAppState] = useState<AppState | null>(null);
-  const [streamTransfers, setStreamTransfers] = useState<TokenTransfer[]>([]);
-  const [streamStart, setStreamStart] = useState<number | null>(null);
-  const [isTracking, setIsTracking] = useState(false);
   const [showApiStatus, setShowApiStatus] = useState(false);
-  const isStreaming = useRef(false);
+  const [transfers, setTransfers] = useState<TokenTransfer[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingProgress, setStreamingProgress] = useState<string>('');
 
   const { data: tokenMetadata, isLoading: isLoadingMetadata } = useQuery({
     queryKey: ['tokenMetadata', appState?.tokenMint],
@@ -60,49 +59,9 @@ function TokenTracker() {
     enabled: !!appState?.tokenMint,
   });
 
-  const { data: transfers, isLoading: isLoadingTransfers, error } = useQuery({
-    queryKey: ['tokenTransfers', appState?.tokenMint, appState?.walletAddress, appState?.heliusKey, appState?.seconds],
-    queryFn: async (): Promise<TokenTransfer[]> => {
-      if (!appState) return [];
-      const rpcUrl = appState.heliusKey ? getHeliusRpcUrl(appState.heliusKey) : PUBLIC_RPC_URL;
-      const service = new SolanaService(rpcUrl);
-      // Non-stream final snapshot (still returned)
-      return await service.getTokenTransfers(appState.tokenMint, appState.walletAddress, appState.seconds);
-    },
-    enabled: !!appState && !!tokenMetadata,
-  });
+  const isLoading = isLoadingMetadata || isStreaming;
 
-  useEffect(() => {
-    // Start streaming when appState becomes available
-    const run = async () => {
-      if (!appState) return;
-      if (isStreaming.current) return;
-      isStreaming.current = true;
-      setIsTracking(true);
-      setStreamTransfers([]);
-      setStreamStart(Date.now());
-
-      const rpcUrl = appState.heliusKey ? getHeliusRpcUrl(appState.heliusKey) : PUBLIC_RPC_URL;
-      const service = new SolanaService(rpcUrl);
-      try {
-        await service.getTokenTransfersStream(
-          appState.tokenMint,
-          appState.walletAddress,
-          appState.seconds,
-          (batch) => setStreamTransfers((prev) => [...batch, ...prev])
-        );
-      } finally {
-        isStreaming.current = false;
-        setIsTracking(false);
-      }
-    };
-    if (appState && tokenMetadata) run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appState?.tokenMint, appState?.walletAddress, appState?.heliusKey, appState?.seconds, !!tokenMetadata]);
-
-  const isLoading = isLoadingMetadata || isLoadingTransfers;
-
-  const handleAnalyze = (data: {
+  const handleAnalyze = async (data: {
     tokenMint: string;
     walletAddress?: string;
     heliusKey: string;
@@ -114,17 +73,49 @@ function TokenTracker() {
       heliusKey: data.heliusKey, 
       seconds: data.seconds 
     });
+
+    // Start streaming transfers immediately (don't wait for metadata)
+    setTransfers([]); // Clear previous results
+    setIsStreaming(true);
+    setStreamingProgress('Starting search...');
+
+    try {
+      const rpcUrl = data.heliusKey ? getHeliusRpcUrl(data.heliusKey) : PUBLIC_RPC_URL;
+      const service = new SolanaService(rpcUrl);
+
+      await service.getTokenTransfersStream(
+        data.tokenMint,
+        data.walletAddress || undefined,
+        data.seconds,
+        (cumulativeTransfers: TokenTransfer[]) => {
+          // Service sends cumulative transfers already deduplicated
+          console.log(`📊 App: Received ${cumulativeTransfers.length} cumulative transfers`);
+          setTransfers(cumulativeTransfers);
+        },
+        (progress: string) => {
+          setStreamingProgress(progress);
+        }
+      );
+
+      setStreamingProgress('Search completed!');
+    } catch (error) {
+      console.error('Streaming error:', error);
+      setStreamingProgress('Search failed. Please try again.');
+    } finally {
+      setIsStreaming(false);
+      // Clear progress after a delay
+      setTimeout(() => setStreamingProgress(''), 3000);
+    }
   };
 
   const handleReset = () => {
     setAppState(null);
-    setStreamTransfers([]);
-    setStreamStart(null);
-    setIsTracking(false);
-    isStreaming.current = false;
+    setTransfers([]);
+    setIsStreaming(false);
+    setStreamingProgress('');
   };
 
-  const combinedTransfers = (streamTransfers.length ? streamTransfers : []).concat(transfers || []);
+  const combinedTransfers = transfers || [];
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -153,7 +144,7 @@ function TokenTracker() {
                       {tokenMetadata?.name || 'Token'} Transfer Analytics
                     </h2>
                     <p className="text-xs text-slate-600">
-                      {appState.walletAddress 
+                      {appState?.walletAddress 
                         ? `${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}`
                         : `All ${tokenMetadata?.symbol || 'Token'} transfers`}
                     </p>
@@ -172,13 +163,8 @@ function TokenTracker() {
                   <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
                   <span className="text-xs">{tokenMetadata?.symbol || 'TOKEN'}</span>
                   <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-                  <span className="text-xs">Lookback: {appState.seconds}s</span>
-                  {streamStart && (
-                    <>
-                      <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-                      <span className="text-xs">Started: {new Date(streamStart).toLocaleTimeString()}</span>
-                    </>
-                  )}
+                  <span className="text-xs">Lookback: {appState?.seconds || 0}s</span>
+                  
                 </div>
               </div>
             </div>
@@ -220,59 +206,76 @@ function TokenTracker() {
               </div>
             )}
 
-            {isTracking && (
-              <div className="flex items-center justify-center mb-4">
-                <div className="inline-flex items-center gap-2 text-slate-600 text-sm">
-                  <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
-                  <span>Tracking...</span>
-                </div>
-              </div>
-            )}
-
-            {error && (
-              <div className="max-w-2xl mx-auto mb-6">
-                <div className="bg-white border border-red-200 rounded-xl p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <AlertCircle className="w-5 h-5 text-red-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Analysis Warning</h3>
-                      <p className="text-slate-700 mb-2">
-                        {error instanceof Error ? error.message : 'An issue occurred while fetching transfer data.'}
-                      </p>
-                      {streamTransfers.length > 0 && (
-                        <p className="text-slate-600 text-sm">
-                          Streaming results are still coming in below.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Transfer List Section */}
-            {(combinedTransfers.length > 0) && (
+            {(combinedTransfers.length > 0 && tokenMetadata) && (
               <div>
                 <div className="mb-4">
                   <h2 className="text-xl font-bold text-slate-900">Recent Transfers</h2>
                   <p className="text-sm text-slate-600">
                     {combinedTransfers.length} transfer{combinedTransfers.length !== 1 ? 's' : ''} found
-                    {appState.walletAddress ? ` for wallet ${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : ''}
+                    {appState?.walletAddress ? ` for wallet ${appState.walletAddress.slice(0, 8)}...${appState.walletAddress.slice(-8)}` : ''}
                   </p>
                 </div>
                 <TransferList 
                   transfers={combinedTransfers} 
-                  tokenMetadata={tokenMetadata!} 
-                  walletAddress={appState.walletAddress}
+                  tokenMetadata={tokenMetadata} 
+                  walletAddress={appState?.walletAddress}
                 />
               </div>
             )}
 
+            {/* Show transfers found but metadata loading */}
+            {(combinedTransfers.length > 0 && !tokenMetadata) && (
+              <div className="text-center py-8">
+                <div className="inline-flex items-center gap-2 text-slate-600">
+                  <div className="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+                  <span>Loading token information for {combinedTransfers.length} transfers...</span>
+                </div>
+              </div>
+            )}
+
             {isLoading && combinedTransfers.length === 0 && (
-              <div className="text-center text-slate-600">
-                Scanning blockchain for transfers...
+              <div className="text-center py-8">
+                <div className="inline-flex items-center gap-2 text-slate-600">
+                  <div className="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+                  <span>{streamingProgress || 'Scanning blockchain for transfers...'}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  Transfers will appear in real-time as they are found
+                </p>
+              </div>
+            )}
+
+            {/* Show streaming progress even when transfers are found */}
+            {isStreaming && combinedTransfers.length > 0 && (
+              <div className="text-center py-4">
+                <div className="inline-flex items-center gap-2 text-slate-600">
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+                  <span className="text-sm">{streamingProgress}</span>
+                </div>
+              </div>
+            )}
+
+            {!isLoading && combinedTransfers.length === 0 && appState && (
+              <div className="text-center py-8">
+                <div className="max-w-md mx-auto">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+                    <Search className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">
+                    No transfers found
+                  </h3>
+                  <p className="text-slate-600 text-sm">
+                    No {tokenMetadata?.symbol || 'token'} transfers found in the last {appState?.seconds || 0} seconds.
+                    {appState?.walletAddress && (
+                      <span> for wallet {appState.walletAddress.slice(0, 8)}...{appState.walletAddress.slice(-8)}</span>
+                    )}
+                  </p>
+                  <p className="text-slate-500 text-xs mt-2">
+                    Try increasing the lookback period or check if the addresses are correct.
+                  </p>
+                </div>
               </div>
             )}
           </div>

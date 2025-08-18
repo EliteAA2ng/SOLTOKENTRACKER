@@ -13,10 +13,24 @@ const ITEMS_PER_PAGE = 10;
 export default function TransferList({ transfers, tokenMetadata, walletAddress }: TransferListProps) {
   const [currentPage, setCurrentPage] = useState(1);
 
+  // tokenMetadata is guaranteed to be available when this component renders
+  // because App.tsx checks for it before rendering this component
+
   const formatAmount = (amount: number): string => {
+    // Handle very small amounts
+    if (amount < 0.000001) {
+      return amount.toExponential(2);
+    }
+    
+    // For amounts less than 1, show up to 6 decimal places but remove trailing zeros
+    if (amount < 1) {
+      return parseFloat(amount.toFixed(6)).toString();
+    }
+    
+    // For larger amounts, use standard formatting with 2-6 decimal places
     return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: amount < 1000 ? 6 : 2,
     }).format(amount);
   };
 
@@ -30,11 +44,11 @@ export default function TransferList({ transfers, tokenMetadata, walletAddress }
     let relative: string;
     if (diffHours < 1) {
       const diffMinutes = Math.floor(diffMs / (1000 * 60));
-      relative = `${diffMinutes}m`;
+      relative = diffMinutes <= 1 ? '1 min ago' : `${diffMinutes} mins ago`;
     } else if (diffHours < 24) {
-      relative = `${diffHours}h`;
+      relative = diffHours === 1 ? '1 hr ago' : `${diffHours} hrs ago`;
     } else {
-      relative = `${diffDays}d`;
+      relative = diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
     }
 
     return {
@@ -55,7 +69,7 @@ export default function TransferList({ transfers, tokenMetadata, walletAddress }
   const formatAddress = (address: string): string => {
     if (walletAddress && address === walletAddress) return 'You';
     if (address === 'Unknown') return 'Unknown';
-    return `${address.slice(0, 4)}...${address.slice(-4)}`;
+    return `${address.slice(0, 8)}...${address.slice(-8)}`;
   };
 
   const getSolscanUrl = (signature: string): string => {
@@ -83,15 +97,15 @@ export default function TransferList({ transfers, tokenMetadata, walletAddress }
         sentCount: sent.length,
       };
     } else {
-      // Token-wide mode: just show total transfers and volume
+      // Token-wide mode: show total transfers and volume
       const totalVolume = transfers.reduce((sum, t) => sum + t.amount, 0);
       
       return {
         totalTransfers: transfers.length,
-        totalReceived: totalVolume / 2, // Approximate
-        totalSent: totalVolume / 2, // Approximate
+        totalReceived: totalVolume, // Total volume transferred
+        totalSent: 0, // Not applicable in token-wide mode
         receivedCount: transfers.length,
-        sentCount: transfers.length,
+        sentCount: 0, // Not applicable in token-wide mode
       };
     }
   }, [transfers, walletAddress]);
@@ -130,27 +144,37 @@ export default function TransferList({ transfers, tokenMetadata, walletAddress }
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-slate-600">
-              {walletAddress ? 'Received' : 'Volume'}
+              {walletAddress ? 'Received' : 'Transfers'}
             </p>
             <ArrowDownLeft className="w-4 h-4 text-emerald-500" />
           </div>
           <p className="text-2xl font-semibold text-slate-900">
-            {formatAmount(summary.totalReceived)} {tokenMetadata.symbol}
+            {walletAddress 
+              ? `${formatAmount(summary.totalReceived)} ${tokenMetadata.symbol}`
+              : `${summary.totalTransfers}`
+            }
           </p>
-          <p className="text-xs text-slate-500 mt-1">{summary.receivedCount} transactions</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {walletAddress ? `${summary.receivedCount} transactions` : 'transfer events'}
+          </p>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-slate-600">
-              {walletAddress ? 'Sent' : 'Transfers'}
+              {walletAddress ? 'Sent' : 'Volume'}
             </p>
             <ArrowUpRight className="w-4 h-4 text-red-500" />
           </div>
           <p className="text-2xl font-semibold text-slate-900">
-            {walletAddress ? `${formatAmount(summary.totalSent)} ${tokenMetadata.symbol}` : `${summary.sentCount}`}
+            {walletAddress 
+              ? `${formatAmount(summary.totalSent)} ${tokenMetadata.symbol}` 
+              : `${formatAmount(summary.totalReceived)} ${tokenMetadata.symbol}`
+            }
           </p>
-          <p className="text-xs text-slate-500 mt-1">{summary.sentCount} transactions</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {walletAddress ? `${summary.sentCount} transactions` : 'total volume'}
+          </p>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-5">
@@ -220,14 +244,14 @@ export default function TransferList({ transfers, tokenMetadata, walletAddress }
                 const isReceived = walletAddress ? transfer.direction === 'received' : false;
                 
                 return (
-                  <tr key={transfer.signature} className="hover:bg-slate-50 transition-colors">
+                  <tr key={`${transfer.signature}-${transfer.fromAddress}-${transfer.toAddress}-${transfer.amount}`} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-slate-900">
-                          {timeInfo.date}
+                          {timeInfo.relative}
                         </span>
                         <span className="text-xs text-slate-500">
-                          {timeInfo.time} • {timeInfo.relative} ago
+                          {timeInfo.date} {timeInfo.time}
                         </span>
                       </div>
                     </td>
@@ -308,7 +332,7 @@ export default function TransferList({ transfers, tokenMetadata, walletAddress }
                         className="inline-flex items-center gap-1 text-sm text-violet-600 hover:text-violet-800 transition-colors"
                       >
                         <span className="font-mono">
-                          {transfer.signature.slice(0, 8)}...
+                          {transfer.signature.slice(0, 12)}...
                         </span>
                         <ExternalLink className="w-3 h-3" />
                       </a>

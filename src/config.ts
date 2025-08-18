@@ -3,6 +3,7 @@ export const COMMON_TOKENS = {
 	USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
 	USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
 	SOL: 'So11111111111111111111111111111111111111112',
+	PUMP: 'pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn',
 	BONK: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
 	JITO: 'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn',
 	RAY: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
@@ -11,11 +12,11 @@ export const COMMON_TOKENS = {
 
 export const DEFAULT_CONFIG = {
 	lookbackSeconds: 600, // default window in seconds (10 minutes for better UX)
-	delayMsBetweenRequests: 50,
+	delayMsBetweenRequests: 200, // Increased from 50ms to prevent 429 errors
 	maxRetries: 3,
 	rpcTimeout: 30000,
 	maxSignaturesPerQuery: 1000,
-	maxTransactionsToProcess: 150,
+	maxTransactionsToProcess: 500, // Reduced from 1000 to prevent rate limiting
 	// Default Helius API key for convenience (users can override)
 	defaultHeliusKey: '32b3331b-4199-4640-b6b3-2902f294075d',
 };
