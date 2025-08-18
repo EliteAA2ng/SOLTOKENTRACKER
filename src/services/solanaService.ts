@@ -242,8 +242,8 @@ export class SolanaService {
   }
 
   private async getWalletTokenTransfersStream(
-    walletAddress: string,
-    tokenMint: string,
+    walletAddress: string, 
+    tokenMint: string, 
     lookbackSeconds: number,
     onBatch: (transfers: TokenTransfer[]) => void,
     _onProgress?: (status: string) => void

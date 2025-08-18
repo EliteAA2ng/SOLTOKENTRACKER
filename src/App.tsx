@@ -15,7 +15,7 @@ import TransferList from './components/TransferList';
 import { TokenInfoCard } from './components/TokenInfoCard';
 import { ApiStatusModal } from './components/ApiStatusModal';
 import { AutoWalletConnect } from './components/AutoWalletConnect';
-import { SolanaService } from './services';
+import { SolanaService } from './services/SolanaService';
 import { getHeliusRpcUrl, PUBLIC_RPC_URL } from './config';
 import { TokenTransfer, TokenMetadata } from './types';
 import { ArrowLeft, Activity, Search } from 'lucide-react';
